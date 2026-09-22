@@ -135,8 +135,20 @@ function valor(f) {
 const valorDe = v =>
   v == null ? '' : typeof v === 'object' ? String(v.value ?? v.name ?? '') : String(v);
 
-/** "Pos Travel - prejuizo" -> "Pos Travel". Usado nas trocas de area. */
-const limpaArea = s => String(s == null ? '' : s).replace(/\s*-\s*prejui?[zs]o\s*$/i, '').trim();
+/**
+ * "Pos Travel - prejuizo" -> "Pos Travel". Usado nas trocas de area.
+ *
+ * O `i` acentuado e obrigatorio no padrao. A versao anterior era
+ * /preju i? [zs] o/i, que casa "prejuizo" e "prejuzo" mas NAO casa "prejuízo" —
+ * e prejuízo com acento e como o Jira grava os 17 valores reais deste campo.
+ * Resultado: a funcao existia e nunca removia nada. O sufixo aparecia no
+ * grafico de trocas de area em todas as categorias.
+ *
+ * Aceita tambem as duas grafias de travessao, porque ha valor cadastrado com
+ * "–" em vez de "-".
+ */
+const limpaArea = s =>
+  String(s == null ? '' : s).replace(/\s*[-–]\s*preju[íi]?[zs]o\s*$/i, '').trim();
 
 const DIA = 86400000;
 

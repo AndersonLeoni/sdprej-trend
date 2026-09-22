@@ -62,6 +62,16 @@ async function montar(cfg, agora = new Date()) {
 
         /* --- ciclo de analise ------------------------------------------- */
         if (campo === 'status') {
+          /* AUTO-TRANSICAO NAO E MUDANCA DE STATUS.
+             O fluxo do SDPREJ tem transicao que volta ao mesmo status — o Jira
+             registra "análise área responsável -> análise área responsável"
+             como item de status igual a qualquer outro. Sao 1.419 das 2.373
+             saidas aparentes desta etapa: contar isso inflava os ciclos em 2,5x
+             (2.379 no lugar de 954) e nenhum trabalho novo tinha acontecido.
+             Aqui tambem protege a fila: um giro em falso dentro da conferencia
+             reiniciaria o contador de dias parado sem o chamado ter voltado. */
+          if (item.fromString === item.toString) continue;
+
           /* O ciclo e contado na SAIDA, e atribuido a quem executou a saida.
              Contar na entrada mediria fila, nao trabalho: um chamado pode
              entrar na analise e ficar meses parado. A saida e o momento em
@@ -80,14 +90,25 @@ async function montar(cfg, agora = new Date()) {
         }
 
         /* --- troca de area responsavel ---------------------------------- */
-        if (campo === D.CAMPO.areaFalha) {
+        /* CAMPO.departamento (10885), NAO CAMPO.areaFalha (11054).
+           Os dois guardam area, mas so um tem historico. 11054 e "Area
+           identificadora", o estado ATUAL que a visao por tema usa, e ele nao
+           aparece nenhuma vez no changelog dos 1.508 chamados — ler dele aqui
+           produzia zero troca de area, silenciosamente. 10885 e "Departamento
+           responsavel": 482 mudancas, todas de X para Y, nenhum preenchimento
+           inicial, 9 autores humanos, 17 areas. E este o registro da troca. */
+        if (campo === D.CAMPO.departamento) {
           const de = D.limpaArea(item.fromString);
           const para = D.limpaArea(item.toString);
-          /* Aqui o dado e sujo de verdade: o campo aceita texto livre e ha
-             registros com paragrafos de comentario colados dentro dele. Sem
-             este filtro o grafico de trocas de area ganha categorias que sao
-             frases inteiras — o painel antigo tem exatamente esse defeito. */
-          if (areaValida(de) && areaValida(para) && de !== para) {
+          /* Nada de filtro de formato aqui. Este campo e lista controlada, nao
+             texto livre — os 17 valores sao todos nome de area bem formado. A
+             versao anterior descartava por comprimento por causa de paragrafos
+             que na verdade vinham de 11008, "Justificativa troca area", lido
+             por engano: texto livre e o conteudo legitimo DAQUELE campo. Um
+             filtro que hoje rejeita zero registro so serve para um dia derrubar
+             em silencio um departamento de nome comprido. Quem vigia formato e
+             o verify.js, que reclama sem descartar. */
+          if (de && para && de !== para) {
             areas.push({ autor: quem, de, para, mes: D.mes(quando) });
           }
         }
@@ -145,16 +166,6 @@ function foco(cfg, ciclos) {
 }
 
 /**
- * Um nome de area e curto e de uma linha. Texto colado no campo e longo,
- * tem quebra de linha, ou termina em pergunta. A area real mais comprida em
- * uso e "Corporativo - Atendimento", com 25 caracteres — 40 e folga larga.
- */
-function areaValida(s) {
-  const t = String(s || '').trim();
-  return t.length > 0 && t.length <= 40 && !/[\r\n?]/.test(t);
-}
-
-/**
  * O changelog embutido na busca vem cortado em 100 entradas por chamado.
  * Chamado com historico maior perderia transicoes — e justamente o chamado
  * que mais andou, o mais interessante. Para esses, buscamos o historico
@@ -182,4 +193,4 @@ async function completarTruncados(issues) {
   }
 }
 
-module.exports = { montar, areaValida, foco, ETAPA_ANALISE, ETAPA_CONFERENCIA };
+module.exports = { montar, foco, ETAPA_ANALISE, ETAPA_CONFERENCIA };

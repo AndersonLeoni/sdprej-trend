@@ -46,6 +46,29 @@ setx JIRA_TOKEN "cole-o-token-aqui"
 O token é gerado em <https://id.atlassian.com/manage-profile/security/api-tokens>.
 **Abra um terminal novo depois do `setx`** — a variável não aparece no que já estava aberto.
 
+### Na rede corporativa: duas pedras no caminho
+
+Nenhuma das duas é problema do projeto, mas as duas custam tempo se ninguém avisar.
+
+**`winget` está desativado por política de grupo** (`EnableAppInstaller: 0`), então
+`winget install Git.Git` sai com código 58. A saída é o **MinGit**: zip puro, sem
+instalador e sem administrador, extraído em `%LOCALAPPDATA%\Programs\MinGit`, com
+`...\MinGit\cmd` no PATH do usuário.
+
+**O TLS é interceptado por uma CA corporativa**, e a consulta de revogação do
+certificado dela não é alcançável — todo `git fetch`/`push` morre com
+`CRYPT_E_NO_REVOCATION_CHECK`. Uma vez por clone:
+
+```
+git config http.sslBackend schannel
+git config http.schannelCheckRevoke false
+```
+
+As duas linhas juntas, na ordem: a segunda só tem efeito com o backend declarado
+explicitamente na primeira. O backend `openssl` **não** é alternativa aqui — ele usa o
+bundle Mozilla, que não conhece a CA corporativa, e falha com `unable to get local
+issuer certificate`. Só o schannel enxerga o repositório de certificados do Windows.
+
 ## Uso
 
 ```
@@ -145,10 +168,21 @@ mesmo dado cabe em 67 KB.
 
 ## Defeitos conhecidos no dado (não no código)
 
-- **Texto de comentário colado no campo "Área identificadora".** 13 registros de troca
-  de área têm parágrafos inteiros no lugar do nome da área. `extract/analistas.js`
-  descarta esses registros (nome de área tem no máximo 40 caracteres, uma linha, sem
-  interrogação); a versão antiga do painel os exibia como categoria de gráfico.
+- **A troca de área tem três campos parecidos, e só um serve.** `customfield_11054`
+  ("Área identificadora") é o estado **atual**, usado pela visão por tema — ele não
+  aparece nenhuma vez no changelog. `customfield_10975` ("Área responsável") tem 1.501
+  mudanças, mas todas são `vazio → X` feitas por "Automation for Jira": é preenchimento,
+  não troca. O histórico de troca está em **`customfield_10885`** ("Departamento
+  responsável"): 485 mudanças, todas de X para Y, 9 autores humanos, 17 áreas.
+  `customfield_11008` ("Justificativa troca área responsável") é texto livre **por
+  definição** — é a justificativa escrita por quem trocou, não um nome de área.
+- **Uma área não segue o padrão do sufixo.** As outras 16 terminam em `- prejuízo` e o
+  `limpaArea` remove; "Fraude Prejuízo" não tem hífen separando, então fica como está e
+  o `verify.js` emite nota. Preferi a nota a adivinhar onde o nome termina.
+- **Auto-transição de status.** O fluxo tem transição que volta ao mesmo status, e o Jira
+  registra `análise área responsável → análise área responsável` como mudança. São 1.419
+  das 2.373 saídas aparentes daquela etapa. Contar isso como ciclo inflava a produtividade
+  em 2,5×.
 - **Caixa inconsistente no catálogo de status do GDIS** — "Em análise Nível 1",
   "Em análise nível 2", "Em Análise Nível 3". A classificação é insensível a caixa.
 - **Uma chave GDIS referenciada que não existe mais** no Jira. Aparece como

@@ -210,17 +210,32 @@ function verificaAnalistas(DA) {
   const dupFila = DA.fila.length - new Set(DA.fila.map(f => f.key)).size;
   dupFila ? falha(dupFila + ' chave repetida na fila') : ok('nenhuma chave repetida na fila');
 
-  /* O campo de area aceita texto livre, e ha comentario colado dentro dele.
-     Se sobrou paragrafo aqui, o grafico de trocas de area ganha categoria
-     que e uma frase inteira — defeito conhecido do painel antigo. */
-  const { areaValida } = require('./extract/analistas');
-  const sujos = DA.areas.filter(a => !areaValida(a.de) || !areaValida(a.para));
-  sujos.length
-    ? aviso(sujos.length + ' de ' + DA.areas.length + ' trocas de area com texto livre no lugar do nome da area')
-    : ok('as ' + DA.areas.length + ' trocas de area tem nome de area valido');
+  /* Vigia o formato do nome de area, mas a extracao nao descarta nada: se um
+     dia o campo passar a receber texto livre, isto vira nota e o dado continua
+     la para ser olhado. Descartar na extracao foi o erro anterior — escondia a
+     causa em vez de mostrar. Nome real mais comprido hoje: 36 caracteres. */
+  const pareceArea = s => {
+    const t = String(s || '').trim();
+    return t.length > 0 && t.length <= 60 && !/[\r\n]/.test(t);
+  };
+  const estranhos = DA.areas.filter(a => !pareceArea(a.de) || !pareceArea(a.para));
+  estranhos.length
+    ? aviso(estranhos.length + ' de ' + DA.areas.length + ' trocas de area com nome fora do formato esperado: ' +
+            JSON.stringify(estranhos.slice(0, 2).map(a => a.de + ' -> ' + a.para)))
+    : ok('as ' + DA.areas.length + ' trocas de area tem nome de area bem formado');
 
-  const areas = new Set(DA.areas.flatMap(a => [a.de, a.para]).filter(areaValida));
+  /* Zero troca de area nao e "nenhuma troca aconteceu": e o sintoma de estar
+     lendo o campo errado, que foi o defeito corrigido. Falha, nao nota. */
+  DA.areas.length === 0
+    ? falha('nenhuma troca de area — conferir se o campo de historico e o CAMPO.departamento')
+    : ok(DA.areas.length + ' trocas de area por ' + new Set(DA.areas.map(a => a.autor)).size + ' autores');
+
+  const areas = new Set(DA.areas.flatMap(a => [a.de, a.para]));
   ok(areas.size + ' areas distintas em uso');
+  const sufixo = [...areas].filter(a => /preju/i.test(a));
+  sufixo.length
+    ? aviso(sufixo.length + ' nome(s) de area ainda com sufixo de prejuizo: ' + JSON.stringify(sufixo.slice(0, 3)))
+    : ok('nenhum nome de area com sufixo de prejuizo pendurado');
   ok(new Set(DA.ciclos.map(c => c.analista)).size + ' analistas com ciclo concluido, ' +
      DA.ciclos.length + ' ciclos em ' + new Set(DA.ciclos.map(c => c.key)).size + ' chamados');
 }
