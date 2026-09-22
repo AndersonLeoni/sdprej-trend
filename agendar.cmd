@@ -1,9 +1,9 @@
 @echo off
 rem ===========================================================================
-rem  agendar.cmd — cria (ou recria) a tarefa diaria de atualizacao do painel.
+rem  agendar.cmd - cria (ou recria) a tarefa diaria de atualizacao do painel.
 rem
 rem  Roda no contexto do usuario, sem privilegio de administrador. Por isso a
-rem  tarefa so dispara quando o usuario esta logado — o que e aceitavel aqui:
+rem  tarefa so dispara quando o usuario esta logado - o que e aceitavel aqui:
 rem  o painel e consumido durante o dia de trabalho.
 rem
 rem  Uso:  agendar.cmd            cria as 08:10

@@ -6,3 +6,14 @@
 # LF por CRLF no checkout, o arquivo montado ficaria diferente do original sem
 # que uma linha de codigo tivesse mudado.
 * -text
+
+# Excecao obrigatoria: arquivo de lote PRECISA de CRLF.
+#
+# O cmd.exe reposiciona o arquivo depois de cada comando executado, e com linha
+# terminada so em LF ele reposiciona errado e engole os primeiros caracteres da
+# linha seguinte: "setlocal" chega como "tlocal", "set" como "et". O script nao
+# falha de forma limpa — ele executa pela metade. Foi exatamente o que aconteceu
+# aqui quando estes dois arquivos nasceram com LF por causa da regra acima.
+#
+# Isto nao ameaca a reproducibilidade do build: .cmd nao entra no painel montado.
+*.cmd text eol=crlf

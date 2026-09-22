@@ -1,6 +1,6 @@
 @echo off
 rem ===========================================================================
-rem  run-all.cmd — extrai do Jira, monta o painel, registra o que aconteceu.
+rem  run-all.cmd - extrai do Jira, monta o painel, registra o que aconteceu.
 rem
 rem  E um .cmd, e nao um .ps1, por um motivo concreto: a politica de execucao
 rem  efetiva desta maquina e Restricted por GPO de dominio (MachinePolicy), e
@@ -34,7 +34,7 @@ call :log "----- inicio  (node: %NODE%)"
 rem --- extracao -------------------------------------------------------------
 "%NODE%" extract\run.js %* >>"%LOG%" 2>&1
 if errorlevel 1 (
-  call :log "ERRO na extracao (codigo %errorlevel%) — painel anterior preservado"
+  call :log "ERRO na extracao (codigo %errorlevel%) - painel anterior preservado"
   exit /b 1
 )
 
