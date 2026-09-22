@@ -1,0 +1,8 @@
+# Nenhuma conversao de fim de linha, em nenhum arquivo.
+#
+# Isto e requisito, nao preferencia. O painel e montado por concatenacao
+# literal de src/template.html + src/app.css + src/app.js, e o resultado tem
+# de ser reproduzivel byte a byte. Se um clone com core.autocrlf=true trocasse
+# LF por CRLF no checkout, o arquivo montado ficaria diferente do original sem
+# que uma linha de codigo tivesse mudado.
+* -text

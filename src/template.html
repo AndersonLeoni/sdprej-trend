@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>SDPREJ · Painel de prejuízo TI · CVC Corp — Uso interno</title>
+<style>
+@@CSS@@
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="conf">
+  <b>CONFIDENCIAL — USO INTERNO CVC CORP.</b>
+  Contém valores de prejuízo, chaves de chamados, nomes de colaboradores com métricas individuais e
+  razões sociais de clientes e fornecedores. Não publicar em ambiente aberto, não encaminhar para fora da companhia.
+</div>
+
+<nav class="viewnav">
+  <div class="tabs" role="tablist" aria-label="Visões do painel">
+    <button type="button" role="tab" id="tab-temas" aria-selected="true" aria-controls="view-temas">Visão geral por tema</button>
+    <button type="button" role="tab" id="tab-gdis" aria-selected="false" aria-controls="view-gdis">Vínculo com GDIS</button>
+    <button type="button" role="tab" id="tab-ana" aria-selected="false" aria-controls="view-ana">Por analista</button>
+  </div>
+  <div class="sp"></div>
+  <span class="chip" id="chipGer"></span>
+  <button class="btn" id="themeBtn" aria-label="Alternar tema claro/escuro">◐ Tema</button>
+</nav>
+
+<!-- ============================ VIEW: TEMAS ============================ -->
+<section id="view-temas" role="tabpanel" aria-labelledby="tab-temas">
+
+<div class="hdr">
+  <h1>Prejuízo TI por tema</h1>
+  <div class="lead">
+    Filtro <b>TI SDPREJ - GERAL</b> restrito a <b>status = análise área responsável</b> — os chamados de
+    prejuízo/não conformidade que ainda aguardam parecer da TI.
+  </div>
+</div>
+
+<div class="controls" role="group" aria-label="Filtros da visão por tema">
+  <div><label for="fTema">Tema</label><select id="fTema"><option value="">Todos</option></select></div>
+  <div><label for="fArea">Área identificadora</label><select id="fArea"><option value="">Todas</option></select></div>
+  <div><label for="fAging">Envelhecimento</label><select id="fAging"><option value="">Todos</option></select></div>
+  <div><label for="fGdis">Situação do GDIS</label><select id="fGdis">
+    <option value="">Todas</option>
+    <option value="Pendente de análise">Pendente de análise</option>
+    <option value="Em análise (N1/N2/N3)">Em análise (N1/N2/N3)</option>
+    <option value="Aguardando validação do usuário">Aguardando validação do usuário</option>
+    <option value="Concluído / cancelado">Concluído / cancelado</option>
+    <option value="Sem vínculo rastreável">Sem vínculo rastreável</option>
+  </select></div>
+  <div><label for="fBusca">Busca</label><input type="search" id="fBusca" placeholder="chave, GDIS, reserva, hotel…"></div>
+  <div><label for="segMetric">Medida dos gráficos</label>
+    <div class="seg" id="segMetric">
+      <button type="button" data-m="count" aria-pressed="true">Quantidade</button>
+      <button type="button" data-m="valor" aria-pressed="false">Valor R$</button>
+    </div>
+  </div>
+  <div class="sp"></div>
+  <div><button class="btn" id="t-clear">Limpar filtros</button></div>
+</div>
+
+<div class="kpis" id="t-kpis"></div>
+
+<div class="grid">
+  <section class="card wide">
+    <h2>Temas &middot; natureza do incidente</h2>
+    <div class="cs" id="cs-tema"></div>
+    <div class="hbars" id="ch-tema"></div>
+  </section>
+  <section class="card">
+    <h2>Envelhecimento do backlog</h2>
+    <div class="cs">Dias desde a abertura. Faixas ordenadas — o tom se intensifica com a idade.</div>
+    <div class="cw" id="ch-aging"></div>
+  </section>
+  <section class="card">
+    <h2>Classificação da falha</h2>
+    <div class="cs">Campo <em>Falha</em> registrado no chamado.</div>
+    <div class="hbars" id="ch-falha"></div>
+  </section>
+  <section class="card wide">
+    <h2>Área identificadora da falha</h2>
+    <div class="cs">Área que identificou e abriu a não conformidade — indica onde o erro aparece, não onde nasce.</div>
+    <div class="hbars" id="ch-area"></div>
+  </section>
+  <section class="card">
+    <h2>Abertura por mês &middot; volume</h2>
+    <div class="cs">Quantidade de chamados criados.</div>
+    <div class="cw" id="ch-mesq"></div>
+  </section>
+  <section class="card">
+    <h2>Abertura por mês &middot; valor</h2>
+    <div class="cs">Prejuízo reclamado, em R$. Escala própria — não comparar altura com o gráfico ao lado.</div>
+    <div class="cw" id="ch-mesv"></div>
+  </section>
+  <section class="card wide">
+    <h2>Tema &times; área identificadora</h2>
+    <div class="cs">Contagem de chamados. Tom mais intenso = maior concentração. Linhas e colunas excedentes são agrupadas, então todos os totais fecham com os gráficos acima.</div>
+    <div style="overflow-x:auto"><div id="ch-heat"></div></div>
+  </section>
+  <section class="card">
+    <h2>Fornecedores / hotéis mais recorrentes</h2>
+    <div class="cs">Top 12 pelo campo <em>Fornecedor/hotel</em>.</div>
+    <div class="hbars" id="ch-forn"></div>
+  </section>
+  <section class="card">
+    <h2>Clientes / agências mais recorrentes</h2>
+    <div class="cs">Top 12 pelo campo <em>Cliente</em>.</div>
+    <div class="hbars" id="ch-cli"></div>
+  </section>
+  <section class="card wide">
+    <h2>Chamados</h2>
+    <div class="cs">Visão tabular do recorte filtrado — clique no cabeçalho para ordenar, na chave para abrir no Jira.</div>
+    <div class="tbl">
+      <table class="dt" id="t-dt">
+        <thead><tr>
+          <th data-s="key">Chave<span class="ar">↕</span></th>
+          <th data-s="summary">Resumo<span class="ar">↕</span></th>
+          <th data-s="temaDerivado">Tema<span class="ar">↕</span></th>
+          <th data-s="areaFalha">Área<span class="ar">↕</span></th>
+          <th data-s="fornecedor">Fornecedor / hotel<span class="ar">↕</span></th>
+          <th data-s="created">Criado<span class="ar">↕</span></th>
+          <th data-s="diasAberto">Dias<span class="ar">↕</span></th>
+          <th data-s="valor">Valor R$<span class="ar">↕</span></th>
+          <th data-s="ocorrencia">Ocorrência<span class="ar">↕</span></th>
+          <th data-s="gcls">Situação do GDIS<span class="ar">↕</span></th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="tfoot">
+      <span id="t-count"></span>
+      <span><button class="btn" id="t-more">Mostrar mais 100</button>
+        <button class="btn" id="t-csv">Baixar CSV</button></span>
+    </div>
+  </section>
+</div>
+
+<footer>
+  Fonte: Jira Cloud CVC Corp &middot; <code>filter in ("10478") AND project = SDPREJ AND status = "análise área responsável"</code><br>
+  <b>Tema</b> é derivado do padrão do resumo do chamado, porque o campo nativo <em>Problema</em> concentra ~95% dos
+  registros em “Sistema XML - Integração” e não discrimina. <b>Valor</b> usa <em>Prejuízo após Reversão</em>, com
+  fallback em <em>Prejuízo inicial</em>.
+</footer>
+</section>
+
+<!-- ============================ VIEW: GDIS ============================ -->
+<section id="view-gdis" role="tabpanel" aria-labelledby="tab-gdis" hidden>
+
+<div class="hdr">
+  <h1>Vínculo com o GDIS e estágio da análise técnica</h1>
+  <div class="lead">
+    Todo SDPREJ de prejuízo deveria apontar, no campo <b>nº ocorrência</b>, o incidente que o originou.
+    Esta visão cobre os <b>1.513 chamados</b> do filtro <b>TI SDPREJ - GERAL</b> em todas as etapas,
+    responde quais têm GDIS e quais não, e classifica cada GDIS entre <b>pendente de análise</b>,
+    <b>em análise (Nível 1, 2 ou 3)</b>, <b>aguardando o solicitante</b> e <b>concluído</b>.
+  </div>
+</div>
+
+<div class="controls" role="group" aria-label="Filtros da visão de vínculo com GDIS">
+  <div><label for="gEtapa">Etapa do SDPREJ</label><select id="gEtapa"><option value="">Todas</option></select></div>
+  <div><label for="gTema">Tema</label><select id="gTema"><option value="">Todos</option></select></div>
+  <div><label for="gSit">Situação do GDIS</label><select id="gSit"><option value="">Todas</option></select></div>
+  <div><label for="gBusca">Busca</label><input type="search" id="gBusca" placeholder="SDPREJ-…, GDIS-…, status"></div>
+  <div><label for="gMetric">Medida dos gráficos</label>
+    <div class="seg" id="gMetric">
+      <button type="button" data-m="count" aria-pressed="true">Quantidade</button>
+      <button type="button" data-m="valor" aria-pressed="false">Valor R$</button>
+    </div>
+  </div>
+  <div class="sp"></div>
+  <div><button class="btn" id="g-clear">Limpar filtros</button></div>
+</div>
+
+<div class="kpis" id="g-kpis"></div>
+
+<div class="grid">
+
+  <section class="card wide">
+    <h2>Situação do GDIS associado</h2>
+    <div class="cs" id="g-cs-sit"></div>
+    <div class="hbars" id="g-ch-sit"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Etapa do SDPREJ &times; situação do GDIS</h2>
+    <div class="cs">Composição de cada etapa do chamado de prejuízo. Barras normalizadas em 100% — o número à direita é o total de chamados da etapa.</div>
+    <div class="legend" id="g-lg-etapa"></div>
+    <div id="g-ch-etapa"></div>
+    <div class="note" id="g-note-etapa"></div>
+  </section>
+
+  <section class="card">
+    <h2>Nível da análise em curso</h2>
+    <div class="cs">Só os chamados cujo GDIS está <b>em análise</b>. Escala ordenada: o tom se intensifica com o nível de escalonamento.</div>
+    <div class="hbars" id="g-ch-niv"></div>
+    <div class="note" id="g-note-niv"></div>
+  </section>
+
+  <section class="card">
+    <h2>Idade média do SDPREJ por situação do GDIS</h2>
+    <div class="cs">Dias desde a abertura do chamado de prejuízo, em média. Mede quanto tempo o prejuízo espera, não quanto o GDIS demora.</div>
+    <div class="hbars" id="g-ch-idade"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Tema &times; situação do GDIS</h2>
+    <div class="cs">Onde a análise técnica ainda está aberta e onde já fechou, por natureza do incidente. Temas fora do top 10 são agrupados, então os totais fecham.</div>
+    <div class="legend" id="g-lg-tema"></div>
+    <div id="g-ch-tema"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Catálogo de status do GDIS</h2>
+    <div class="cs">Os valores de status lidos direto do Jira, sem interpretação, com a classificação aplicada a cada um. A coluna <b>GDIS distintos</b> mostra que um mesmo incidente pode responder por vários chamados de prejuízo.</div>
+    <div class="tbl sm">
+      <table class="dt" id="g-cat">
+        <thead><tr>
+          <th>Status no Jira</th>
+          <th>Classificação aplicada</th>
+          <th style="text-align:right">GDIS distintos</th>
+          <th style="text-align:right">Chamados</th>
+          <th style="text-align:right">Valor R$</th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2>Chamados e seus incidentes</h2>
+    <div class="cs">Visão tabular do recorte — clique no cabeçalho para ordenar, nas chaves para abrir no Jira.</div>
+    <div class="tbl">
+      <table class="dt" id="g-dt">
+        <thead><tr>
+          <th data-s="key">Chamado<span class="ar">↕</span></th>
+          <th data-s="etapa">Etapa do SDPREJ<span class="ar">↕</span></th>
+          <th data-s="tema">Tema<span class="ar">↕</span></th>
+          <th data-s="gdis">GDIS<span class="ar">↕</span></th>
+          <th data-s="cls">Situação do GDIS<span class="ar">↕</span></th>
+          <th data-s="dias">Dias<span class="ar">↕</span></th>
+          <th data-s="valor">Valor R$<span class="ar">↕</span></th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="tfoot">
+      <span id="g-count"></span>
+      <span><button class="btn" id="g-more">Mostrar mais 100</button>
+        <button class="btn" id="g-csv">Baixar CSV</button></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Um GDIS, vários prejuízos</h2>
+    <div class="cs" id="g-cs-multi"></div>
+    <div class="tbl sm">
+      <table class="dt" id="g-multi">
+        <thead><tr>
+          <th>GDIS</th><th>Situação</th>
+          <th style="text-align:right">Chamados</th>
+          <th style="text-align:right">Valor R$</th>
+          <th>SDPREJ vinculados</th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Sem vínculo rastreável &middot; correção no Jira</h2>
+    <div class="cs" id="g-cs-sem"></div>
+    <div class="tbl sm">
+      <table class="dt" id="g-sem">
+        <thead><tr>
+          <th>Chamado</th><th>Motivo</th><th>Conteúdo do campo</th>
+          <th style="text-align:right">Dias</th>
+          <th style="text-align:right">Valor R$</th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Fonte: Jira Cloud CVC Corp &middot; <code>filter in ("10478") AND project = SDPREJ</code> — todas as etapas, não só <em>análise área responsável</em>.<br>
+  O vínculo vem do campo <b>nº ocorrência</b> (<code>customfield_10973</code>), que é texto livre: aceita qualquer conteúdo.
+  O campo nativo <b>issuelinks</b> do Jira está vazio em <b>todos</b> os 1.513 chamados, então não existe segunda fonte de associação —
+  o que está nesse campo é tudo o que há. Uma chave só é considerada válida quando casa com o padrão <code>GDIS-nnnn</code>;
+  o status é lido no próprio GDIS no momento da extração.<br>
+@@NOTA_DERIVA@@  <b>Classificação:</b> <em>Concluído / cancelado</em> = Fechado, Resolvido, Cancelado, Cancelado pelo solicitante &middot;
+  <em>Em análise</em> = Em análise Nível 1, 2 ou 3 &middot; <em>Aguardando validação do usuário</em> mantido separado porque
+  a bola está com o solicitante, não com a TI &middot; <em>Pendente de análise</em> = Aberto, Pendente, A Concluir.
+</footer>
+</section>
+
+
+<!-- ============================ VIEW: ANALISTAS ============================ -->
+<section id="view-ana" role="tabpanel" aria-labelledby="tab-ana" hidden>
+
+<div class="hdr">
+  <h1>Produtividade por analista</h1>
+  <div class="lead">
+    Filtro <b>TI SDPREJ - GERAL</b> completo — <span id="a-tot"></span> chamados de prejuízo em todos os status.
+    A medida é o <b>ciclo de análise concluído</b>: cada transição registrada de <i>análise área responsável</i> para
+    <i>Conferência supervisão/gerência</i>, reconstruída do histórico do Jira. Como <b>os analistas em foco
+    começaram a atuar nos prejuízos em momentos diferentes</b>, o volume acumulado não compara — por isso o
+    painel traz também ritmo por mês ativo e a janela dos últimos 3 meses.
+  </div>
+</div>
+
+<div class="controls" role="group" aria-label="Filtros da visão por analista">
+  <div><label for="fAnalista">Analista</label>
+    <select id="fAnalista">
+      <!-- as opções são preenchidas por app.js a partir de DA.foco: nome de
+           pessoa com métrica individual não fica escrito no código -->
+      <option value="">Todos</option>
+    </select></div>
+  <div><label for="fPeriodo">Período</label>
+    <select id="fPeriodo">
+      <option value="" selected>Histórico completo</option>
+      <option value="3">Últimos 3 meses</option>
+      <option value="6">Últimos 6 meses</option>
+      <option value="12">Últimos 12 meses</option>
+    </select></div>
+  <div class="sp"></div>
+  <div><button class="btn" id="a-clear">Limpar filtros</button></div>
+</div>
+
+<div class="kpis" id="a-kpis"></div>
+
+<div class="grid">
+  <section class="card wide">
+    <h2>Ciclos de análise concluídos por mês</h2>
+    <div class="cs">Volume entregue à conferência. Métrica auditável, vinda do histórico de transições do Jira.</div>
+    <div class="legend" id="lg-linha"></div>
+    <div class="cw" id="ch-linha"></div>
+  </section>
+  <section class="card">
+    <h2>Faixa de atuação nos prejuízos</h2>
+    <div class="cs">Um bloco por mês. O tom acompanha o volume de ciclos — deixa visível a diferença de tempo de casa entre os analistas.</div>
+    <div id="ch-timeline"></div>
+  </section>
+  <section class="card">
+    <h2>Ritmo comparável</h2>
+    <div class="cs">Média de ciclos por mês em que o analista efetivamente atuou. Neutraliza a diferença de tempo de casa.</div>
+    <div class="cmp" id="ch-ritmo"></div>
+  </section>
+  <section class="card wide">
+    <h2>Fila em Conferência supervisão/gerência</h2>
+    <div class="cs">Chamados já entregues pelo analista, aguardando parecer da supervisão. A partir daqui o prazo não é mais da TI.</div>
+    <div class="legend" id="lg-fila"></div>
+    <div class="cw" id="ch-fila"></div>
+  </section>
+  <section class="card">
+    <h2>Trocas de área &middot; quem reatribui</h2>
+    <div class="cs">Autor da reatribuição manual de responsável. Volume alto fora da TI indica chamado chegando na fila errada.</div>
+    <div class="hbars" id="ch-autor"></div>
+  </section>
+  <section class="card">
+    <h2>Trocas de área &middot; principais fluxos</h2>
+    <div class="cs">Origem e destino das reatribuições. Automações excluídas.</div>
+    <div class="hbars" id="ch-fluxo"></div>
+  </section>
+  <section class="card wide">
+    <h2>Fila detalhada em Conferência</h2>
+    <div class="cs">Ordenada pelo maior tempo de espera. Clique no cabeçalho para reordenar, na chave para abrir no Jira.</div>
+    <div class="tbl">
+      <table class="dt" id="a-dt">
+        <thead><tr>
+          <th data-s="key">Chave<span class="ar">↕</span></th>
+          <th data-s="enviadoPor">Enviado por<span class="ar">↕</span></th>
+          <th data-s="mesEnvio">Desde<span class="ar">↕</span></th>
+          <th data-s="diasNaFila">Dias na fila<span class="ar">↕</span></th>
+          <th data-s="valor">Valor R$<span class="ar">↕</span></th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="tfoot">
+      <span id="a-count"></span>
+      <span><button class="btn" id="a-more">Mostrar mais 100</button>
+        <button class="btn" id="a-csv">Baixar CSV</button></span>
+    </div>
+  </section>
+</div>
+
+<footer>
+  Fonte: Jira Cloud CVC Corp &middot; filtro <code>10478</code> (TI SDPREJ - GERAL), todos os status &middot;
+  histórico via <code>/rest/api/3/changelog/bulkfetch</code>.<br>
+  <b>Apontamento de horas (Jira Tempo) não é usado como métrica neste painel:</b> a obrigatoriedade foi formalizada em
+  ago/2026, então não existe base histórica comparável entre analistas com tempos de casa diferentes. O volume de ciclos
+  e o ritmo por mês ativo não dependem desse registro.<br>
+  <b>Trocas de área:</b> alterações de <i>Departamento responsável</i> ou <i>Área responsável</i> com origem e destino
+  válidos; registros com texto livre no campo foram descartados.
+</footer>
+</section>
+
+</div>
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+@@DATA@@
+@@JS@@
+</script>
+</body>
+</html>

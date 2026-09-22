@@ -1,0 +1,16 @@
+{
+  "_leia": "Copie para config.json e ajuste. config.json e ignorado pelo git. O TOKEN NAO ENTRA AQUI: ele vem da variavel de ambiente JIRA_TOKEN.",
+
+  "baseUrl": "https://cvccorp.atlassian.net",
+  "email": "",
+
+  "_filtro": "Filtro salvo do Jira que define o universo. Fonte autoritativa: 1.513 chamados. NAO trocar por JQL escrito a mao — um JQL equivalente sem a clausula de status devolve 5.928.",
+  "filtro": 10478,
+  "universo": "filter in (\"10478\") AND project = SDPREJ",
+
+  "_foco": "Analistas em destaque na visao por analista. Use [\"Nome Completo\", \"rotulo curto\"] ou so o nome. NAO existe equivalente no codigo de proposito: nome de pessoa ligado a metrica individual e dado pessoal (LGPD) e nao pode entrar no repositorio. Omita a chave para destacar automaticamente os dois com mais ciclos.",
+  "foco": [],
+
+  "_saida": "Para onde copiar o painel pronto depois do build, alem de dist/. Deixe vazio para nao copiar. Quando o destino for definido (Teams, OneDrive, SharePoint sincronizado), e so preencher aqui — nenhum codigo muda.",
+  "saida": ""
+}
