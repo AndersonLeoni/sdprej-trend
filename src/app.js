@@ -272,6 +272,15 @@ const ViewTemas=(function(){
     hbarsInto('ch-forn',toRows(agg(rows,'fornecedor',12),rows.length),{fmt:fmtBar});
     hbarsInto('ch-cli',toRows(agg(rows,'cliente',12),rows.length),{fmt:fmtBar});
 
+    /* Novo: Valor por departamento responsável (estado atual) */
+    const dept=agg(rows,'areaFalha',12);
+    const m_save=metric; metric='valor';
+    hbarsInto('ch-dept',toRows(dept,rows.length),{fmt:fmtBar});
+    document.getElementById('cs-dept').innerHTML=
+      dept.length?'Valor acumulado por departamento responsável. Liderança: <b>'+esc(dept[0].name)+'</b> com R$ '+nfBRL2.format(dept[0].valor)+'.'
+      :'Sem dados.';
+    metric=m_save;
+
     const ag=agg(rows,'aging',null,AG);
     barsInto('ch-aging',AG,[{label:'Chamados',values:ag.map(r=>r[metric])}],
       {ordinal:true,rotate:true,mB:56,h:250,catLabel:c=>c.replace(' dias',''),
@@ -366,6 +375,13 @@ const ViewAna=(function(){
     const o=document.createElement('option');
     o.value='__outros'; o.textContent=FOCO.length?'Demais analistas':'Todos os analistas';
     sel.appendChild(o);
+
+    /* Preencher faixa de dias na fila */
+    const selF=document.getElementById('fFaixa');
+    FQ.forEach(f=>{
+      const opt=document.createElement('option');
+      opt.value=f; opt.textContent=f; selF.appendChild(opt);
+    });
   })();
   function cutoff(){
     const v=document.getElementById('fPeriodo').value;
@@ -379,10 +395,12 @@ const ViewAna=(function(){
   }
   function scoped(){
     const cut=cutoff(), ok=m=>!cut||(m&&m>=cut);
+    const faixa=document.getElementById('fFaixa').value;
+    const filaFiltrada=DA.fila.filter(f=>anaMatch(f.enviadoPor)&&ok(f.mesEnvio)&&(!faixa||f.faixa===faixa));
     return {
       ciclos:DA.ciclos.filter(c=>anaMatch(c.analista)&&ok(c.mes)),
       areas:DA.areas.filter(a=>anaMatch(a.autor)&&ok(a.mes)),
-      fila:DA.fila.filter(f=>anaMatch(f.enviadoPor)&&ok(f.mesEnvio)),
+      fila:filaFiltrada,
       months:MONTHS.filter(ok)
     };
   }
@@ -590,7 +608,7 @@ const ViewAna=(function(){
     table(s.fila);
   }
 
-  ['fAnalista','fPeriodo'].forEach(id=>document.getElementById(id)
+  ['fAnalista','fPeriodo','fFaixa'].forEach(id=>document.getElementById(id)
     .addEventListener('change',()=>{shown=100;render();}));
   document.getElementById('a-clear').addEventListener('click',()=>{
     document.getElementById('fAnalista').value='';
