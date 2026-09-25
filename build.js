@@ -92,7 +92,12 @@ function main() {
   for (const { nome } of DADOS) console.log('  ' + nome + '       extraido em ' + carimbos[nome]);
 
   /* --- publicacao opcional ---------------------------------------------- */
-  const cfg = fs.existsSync(p('config.json')) ? JSON.parse(read('config.json')) : {};
+  let cfg = {};
+  if (fs.existsSync(p('config.json'))) {
+    let rawData = read('config.json');
+    if (rawData.charCodeAt(0) === 0xFEFF) rawData = rawData.slice(1);
+    cfg = JSON.parse(rawData);
+  }
   if (cfg.saida) {
     try {
       fs.mkdirSync(path.dirname(cfg.saida), { recursive: true });
