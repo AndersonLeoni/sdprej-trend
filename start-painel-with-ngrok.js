@@ -1,63 +1,40 @@
 #!/usr/bin/env node
 /**
- * create-painel-page.js — Cria uma página dedicada no Confluence para o painel
+ * start-painel-with-ngrok.js — Inicia ngrok + servidor Node + atualiza Confluence
  *
- * Uso: node create-painel-page.js
+ * Uso: node start-painel-with-ngrok.js
+ *
+ * Faz:
+ * 1. Inicia ngrok na porta 8000
+ * 2. Obtém a URL pública
+ * 3. Atualiza o link no Confluence
+ * 4. Mantém tudo rodando
  */
 
+const { spawn } = require('child_process');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
-// Obtém o IP local da máquina
-function getLocalIP() {
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return 'localhost';
-}
-
-const LOCAL_IP = getLocalIP();
-
-// Lê configuração do arquivo
-const configPath = path.join(__dirname, 'config.json');
+// Lê config
 let config;
-
-console.log(`📂 Procurando config em: ${configPath}`);
-
 try {
-  if (!fs.existsSync(configPath)) {
-    console.error('❌ config.json não encontrado em:', configPath);
-    process.exit(1);
-  }
-
-  let rawData = fs.readFileSync(configPath, 'utf8');
-  console.log(`📄 Arquivo encontrado (${rawData.length} bytes)`);
-
-  // Remove BOM se existir
-  if (rawData.charCodeAt(0) === 0xFEFF) {
-    rawData = rawData.slice(1);
-  }
-
+  let rawData = fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8');
+  if (rawData.charCodeAt(0) === 0xFEFF) rawData = rawData.slice(1);
   config = JSON.parse(rawData);
-  console.log('✅ Config carregado com sucesso');
 } catch (e) {
-  console.error('❌ Erro ao ler config.json:', e.message);
+  console.error('❌ config.json não encontrado');
   process.exit(1);
 }
 
 const BASE_URL = config.jira.baseUrl + '/wiki';
-const PARENT_PAGE_ID = config.confluence.pageId;
 const EMAIL = config.jira.email;
 const TOKEN = config.jira.token;
-
 const auth = Buffer.from(`${EMAIL}:${TOKEN}`).toString('base64');
+
+let ngrokUrl = null;
+let serverProcess = null;
+let ngrokProcess = null;
 
 function httpsRequest(method, url, body) {
   return new Promise((resolve, reject) => {
@@ -97,8 +74,8 @@ function httpsRequest(method, url, body) {
   });
 }
 
-(async () => {
-  console.log('📄 Verificando página do painel no Confluence...\n');
+async function updateConfluenceLink(ngrokUrl) {
+  console.log(`\n🔗 Atualizando link no Confluence com: ${ngrokUrl}\n`);
 
   const pageTitle = 'PAINEL SDPREJ — Gráficos Interativos';
   const pageContent = `<p><strong>🖥️ PAINEL SDPREJ — Gráficos Interativos em Tempo Real</strong></p>
@@ -111,7 +88,7 @@ function httpsRequest(method, url, body) {
 </ac:structured-macro>
 
 <p style="text-align: center; margin: 24px 0;">
-<a href="http://${LOCAL_IP}:8000/SDPREJ_Painel.html" target="_blank" style="display: inline-block; background: #003366; color: white; padding: 12px 24px; border-radius: 4px; font-weight: bold; font-size: 16px; text-decoration: none;">→ ABRIR PAINEL COMPLETO</a>
+<a href="${ngrokUrl}/SDPREJ_Painel.html" target="_blank" style="display: inline-block; background: #003366; color: white; padding: 12px 24px; border-radius: 4px; font-weight: bold; font-size: 16px; text-decoration: none;">→ ABRIR PAINEL COMPLETO</a>
 </p>
 
 <h2>📊 Visões Disponíveis</h2>
@@ -125,21 +102,15 @@ function httpsRequest(method, url, body) {
 <p>Os dados são atualizados automaticamente todos os dias com as informações mais recentes do Jira.</p>`;
 
   try {
-    // Procura se a página já existe
+    // Procura a página
     const searchRes = await httpsRequest(
       'GET',
       `${BASE_URL}/rest/api/content?spaceKey=${config.confluence.spaceKey}&title=${encodeURIComponent(pageTitle)}`
     );
 
-    let pageId;
-
     if (searchRes.status === 200 && searchRes.body.results && searchRes.body.results.length > 0) {
-      // Página existe — atualiza
       const page = searchRes.body.results[0];
-      pageId = page.id;
       const version = (page.version && page.version.number) ? page.version.number : 1;
-
-      console.log(`📄 Página encontrada (ID: ${pageId}). Atualizando...\n`);
 
       const updateBody = {
         version: { number: version + 1 },
@@ -155,52 +126,75 @@ function httpsRequest(method, url, body) {
 
       const updateRes = await httpsRequest(
         'PUT',
-        `${BASE_URL}/rest/api/content/${pageId}`,
+        `${BASE_URL}/rest/api/content/${page.id}`,
         JSON.stringify(updateBody)
       );
 
       if (updateRes.status === 200) {
-        console.log('✅ Página atualizada com sucesso!\n');
-        console.log(`📍 ID: ${pageId}`);
-        console.log(`🔗 URL: ${BASE_URL}/spaces/${config.confluence.spaceKey}/pages/${pageId}\n`);
-      }
-    } else {
-      // Página não existe — cria
-      console.log('Criando nova página...\n');
-
-      const pageBody = {
-        type: 'page',
-        title: pageTitle,
-        space: { key: config.confluence.spaceKey },
-        ancestors: [{ id: PARENT_PAGE_ID }],
-        body: {
-          storage: {
-            value: pageContent,
-            representation: 'storage'
-          }
-        }
-      };
-
-      const createRes = await httpsRequest(
-        'POST',
-        `${BASE_URL}/rest/api/content`,
-        JSON.stringify(pageBody)
-      );
-
-      if (createRes.status === 200) {
-        pageId = createRes.body.id;
-        console.log('✅ Página criada com sucesso!\n');
-        console.log(`📍 ID: ${pageId}`);
-        console.log(`🔗 URL: ${BASE_URL}/spaces/${config.confluence.spaceKey}/pages/${pageId}\n`);
-      } else {
-        console.error(`❌ Erro ${createRes.status}`);
-        console.log(JSON.stringify(createRes.body, null, 2));
+        console.log('✅ Link do Confluence atualizado com sucesso!');
+        console.log(`🔗 ${ngrokUrl}\n`);
       }
     }
-
-    console.log('✅ Link atualizado com IP: ' + LOCAL_IP);
-
   } catch (err) {
-    console.error('❌ Erro:', err.message);
+    console.error('⚠️  Erro ao atualizar Confluence:', err.message);
   }
-})();
+}
+
+async function startServers() {
+  console.log('🚀 Iniciando SDPREJ com ngrok...\n');
+
+  // Inicia servidor Node na porta 8000
+  console.log('📡 Iniciando servidor Node...');
+  serverProcess = spawn('node', ['server.js'], {
+    cwd: __dirname,
+    stdio: 'inherit'
+  });
+
+  // Aguarda um pouco pra servidor iniciar
+  await new Promise(r => setTimeout(r, 2000));
+
+  // Inicia ngrok
+  console.log('🌐 Iniciando ngrok...\n');
+  ngrokProcess = spawn('ngrok', ['http', '8000'], {
+    stdio: 'pipe'
+  });
+
+  let ngrokOutput = '';
+  ngrokProcess.stdout.on('data', (data) => {
+    ngrokOutput += data.toString();
+
+    // Procura pela URL no output do ngrok
+    const match = ngrokOutput.match(/https:\/\/[a-z0-9]+\.ngrok\.io/);
+    if (match && !ngrokUrl) {
+      ngrokUrl = match[0];
+      console.log(`✅ ngrok iniciado`);
+      console.log(`🌐 URL pública: ${ngrokUrl}\n`);
+
+      // Atualiza o Confluence
+      updateConfluenceLink(ngrokUrl);
+    }
+  });
+
+  ngrokProcess.stderr.on('data', (data) => {
+    console.log(`⚠️  ${data.toString()}`);
+  });
+}
+
+function handleExit() {
+  console.log('\n\n🛑 Parando serviços...');
+  if (serverProcess) serverProcess.kill();
+  if (ngrokProcess) ngrokProcess.kill();
+  console.log('✅ Tudo encerrado');
+  process.exit(0);
+}
+
+process.on('SIGINT', handleExit);
+process.on('SIGTERM', handleExit);
+
+startServers().catch(err => {
+  console.error('❌ Erro ao iniciar:', err.message);
+  process.exit(1);
+});
+
+console.log('\n💡 Dica: O link do Confluence é atualizado automaticamente a cada reinício\n');
+console.log('Pressione CTRL+C para parar\n');

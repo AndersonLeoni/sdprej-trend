@@ -1,0 +1,66 @@
+name: 📊 Atualizar Painel SDPREJ
+
+on:
+  schedule:
+    # Roda todo dia às 8:00 da manhã (UTC-3 = 11:00 UTC)
+    - cron: '0 11 * * *'
+  # Também permite rodar manualmente
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Baixa o código do repositório
+      - name: 📥 Clonar repositório
+        uses: actions/checkout@v3
+
+      # 2. Instala Node.js
+      - name: 📦 Instalar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # 3. Extrai dados do Jira
+      - name: 🔄 Extrair dados do Jira
+        run: node extract/run.js
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+
+      # 4. Compila o painel
+      - name: 🔨 Compilar painel
+        run: node build.js
+
+      # 5. Publica no Confluence
+      - name: 📤 Publicar no Confluence
+        run: |
+          node generate-confluence-premium.js
+          node generate-documentation-page.js
+          node publish-confluence.js
+          node publish-documentation.js
+          node create-painel-page.js
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+
+      # 6. Copia painel pra pasta do GitHub Pages
+      - name: 📁 Preparar para GitHub Pages
+        run: |
+          mkdir -p gh-pages
+          cp dist/SDPREJ_Painel.html gh-pages/index.html
+          echo "✅ Painel pronto para publicar"
+
+      # 7. Faz upload pra branch gh-pages
+      - name: 🚀 Deploy no GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./gh-pages
+
+      # 8. Notificação final
+      - name: ✅ Concluído
+        run: |
+          echo "✨ Painel atualizado com sucesso!"
+          echo "🌐 https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"

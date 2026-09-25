@@ -1,0 +1,233 @@
+#!/usr/bin/env node
+/**
+ * generate-documentation-page.js — Cria página de documentação e arquitetura
+ *
+ * Uso: node generate-documentation-page.js
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+// Lê config (opcional)
+let config;
+try {
+  let rawData = fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8');
+  if (rawData.charCodeAt(0) === 0xFEFF) rawData = rawData.slice(1);
+  config = JSON.parse(rawData);
+} catch (e) {
+  // Config não é obrigatória para gerar documentation
+}
+
+const html = `
+<h1>📚 SDPREJ — Documentação Completa</h1>
+<p style="font-size: 14px; color: #666;">Versão 2.0 Premium | Atualizado: ${new Date().toLocaleString('pt-BR')}</p>
+
+<hr/>
+
+<h2 style="color: #003366; border-left: 4px solid #FF6B35; padding-left: 12px;">🎯 O que é SDPREJ?</h2>
+
+<p>SDPREJ é um <strong>dashboard automatizado</strong> que coleta, analisa e apresenta dados de prejuízos da Trend Operadora em tempo real.</p>
+
+<p><strong>Objetivo:</strong> Fornecer visibilidade centralizada para gerentes e diretoria sobre:</p>
+<ul>
+<li>📊 Distribuição de prejuízos por tema, fornecedor e departamento</li>
+<li>👤 Desempenho de analistas e fila de análise</li>
+<li>🔗 Rastreamento de incidentes vinculados a GDIS</li>
+<li>🔴 Alertas para chamados em risco (180+ dias)</li>
+</ul>
+
+<hr/>
+
+<h2 style="color: #003366; border-left: 4px solid #FF6B35; padding-left: 12px;">🚀 Como Usar</h2>
+
+<h3>Acesso ao Dashboard</h3>
+<ol>
+<li>Abra o Confluence</li>
+<li>Navegue para <strong>"DASHBOARD - SDPREJ TREND"</strong></li>
+<li>Clique no botão azul <strong>"ABRIR PAINEL INTERATIVO"</strong></li>
+<li>O painel abre em nova aba com gráficos e filtros</li>
+</ol>
+
+<h3>Navegação no Painel</h3>
+
+<h4>📋 VISÃO 1: TEMAS</h4>
+<ul>
+<li><strong>Tema:</strong> Classificação por padrão derivado (Reserva Orfa, Reacomodação, Fraude, etc)</li>
+<li><strong>Problema:</strong> Natureza da falha (operacional, técnica, etc)</li>
+<li><strong>Fornecedor:</strong> Qual fornecedor/hotel está envolvido</li>
+<li><strong>Aging:</strong> Dias em aberto (0-90d, 91-180d, 181-365d, etc)</li>
+<li><strong>Mensal:</strong> Evolução de valor reclamado mês a mês</li>
+</ul>
+<p><strong>Filtros:</strong> Por tema, faixa de dias, departamento responsável</p>
+
+<h4>👤 VISÃO 2: ANALISTAS</h4>
+<ul>
+<li><strong>Timeline:</strong> Ciclos concluídos por mês (produtividade)</li>
+<li><strong>Ritmo:</strong> Ciclos por analista (quem mais conclui análises)</li>
+<li><strong>Fila:</strong> Chamados aguardando supervisão por faixa de dias</li>
+</ul>
+<p><strong>Crítico:</strong> Chamados 181+ dias em fila = risco de prescrição</p>
+
+<h4>🔗 VISÃO 3: GDIS</h4>
+<ul>
+<li><strong>Situação:</strong> Status do incidente no GDIS (resolvido, em análise, pendente)</li>
+<li><strong>Etapa:</strong> Qual etapa do SDPREJ o chamado está</li>
+<li><strong>Escalação:</strong> Nível N1/N2/N3</li>
+</ul>
+<p><strong>Insight:</strong> Um GDIS pode gerar múltiplos chamados — resolver um fecha vários</p>
+
+<hr/>
+
+<h2 style="color: #003366; border-left: 4px solid #FF6B35; padding-left: 12px;">⚙️ Arquitetura e Funcionamento</h2>
+
+<h3>Pipeline de Atualização (Automático Diariamente)</h3>
+
+<pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; border-left: 4px solid #003366;">
+1. EXTRAÇÃO (Jira)
+   └─ Coleta 1.513 chamados do Jira
+   └─ Extrai: status, tema, valor, departamento, etc
+   └─ Gera: data/temas.json, data/analistas.json, data/gdis.json
+
+2. BUILD (Compilação)
+   └─ Combina: CSS + JavaScript + dados JSON
+   └─ Gera: dist/SDPREJ_Painel.html (autocontido, offline)
+
+3. CONFLUENCE (Publicação)
+   └─ Gera tabelas + KPIs formatados
+   └─ Atualiza: página index com dados tabulares
+   └─ Resultado: Dashboard visual + Painel interativo
+
+4. AGENDADOR (Windows Task Scheduler)
+   └─ Roda: Diariamente 08:00
+   └─ Automático: sem intervenção manual
+</pre>
+
+<h3>Dados e Segurança</h3>
+
+<table>
+<tbody>
+<tr style="background: #f5f5f5;">
+<td><strong>Dados Extraídos</strong></td>
+<td>Valor de prejuízo, tema, departamento, fornecedor, data, analista</td>
+</tr>
+<tr>
+<td><strong>Dados Sensíveis (NÃO exportados)</strong></td>
+<td>Email pessoal, CPF, informações de cliente final</td>
+</tr>
+<tr style="background: #f5f5f5;">
+<td><strong>Armazenamento</strong></td>
+<td>Apenas em memoria durante processamento; dados finais em Confluence</td>
+</tr>
+<tr>
+<td><strong>Segurança de Rede</strong></td>
+<td>Servidor local com acesso via hostname corporativo (futuro: DNS TI)</td>
+</tr>
+</tbody>
+</table>
+
+<h3>Fluxo de Dados</h3>
+
+<pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; border-left: 4px solid #003366;">
+Jira Cloud (API REST)
+    ↓
+Node.js (Extração + Derivação)
+    ↓
+JSON (Dados intermediários)
+    ↓
+Build (Painel + Tabelas)
+    ↓
+Confluence (Publicação)
+    ↓
+Gerente/Diretoria (Visualização)
+</pre>
+
+<hr/>
+
+<h2 style="color: #003366; border-left: 4px solid #FF6B35; padding-left: 12px;">❓ FAQ — Perguntas Frequentes</h2>
+
+<h3>P: Com que frequência os dados são atualizados?</h3>
+<p><strong>R:</strong> Diariamente via agendador do Windows. Atualização automática: sem necessidade de ação manual.</p>
+
+<h3>P: Por que alguns chamados estão com 180+ dias?</h3>
+<p><strong>R:</strong> Risco de prescrição. Prejudicial = 2 anos. Esses precisam de ação urgente.</p>
+
+<h3>P: O painel funciona offline?</h3>
+<p><strong>R:</strong> Sim! O arquivo HTML é autocontido (CSS + JS + dados embutidos). Funciona sem internet depois de aberto.</p>
+
+<h3>P: Posso filtrar os dados?</h3>
+<p><strong>R:</strong> Sim! Cada visão tem filtros: por tema, departamento, analista, faixa de dias, etc.</p>
+
+<h3>P: Como faço para compartilhar o painel com outras pessoas?</h3>
+<p><strong>R:</strong> Envie o link do Confluence. Qualquer um com acesso consegue abrir.</p>
+
+<h3>P: O painel fica atualizado se eu deixar aberto a noite inteira?</h3>
+<p><strong>R:</strong> Não. Recarregue a página (F5) pra puxar os dados mais recentes.</p>
+
+<hr/>
+
+<h2 style="color: #003366; border-left: 4px solid #FF6B35; padding-left: 12px;">🛠️ Troubleshooting</h2>
+
+<h3>Painel não carrega</h3>
+<ul>
+<li>✓ Verifique sua conexão de rede</li>
+<li>✓ Recarregue a página (CTRL+F5)</li>
+<li>✓ Limpe o cache do navegador</li>
+</ul>
+
+<h3>Dados parecem desatualizados</h3>
+<ul>
+<li>✓ Recarregue (F5) — o painel em cache pode ser antigo</li>
+<li>✓ Verifique a data/hora do atualizado na página do Confluence</li>
+</ul>
+
+<h3>Gráficos aparecem em branco</h3>
+<ul>
+<li>✓ Use Chrome, Firefox ou Edge (versões recentes)</li>
+<li>✓ Desative extensões bloqueadoras (adblockers)</li>
+</ul>
+
+<hr/>
+
+<h2 style="color: #003366; border-left: 4px solid #FF6B35; padding-left: 12px;">🔮 Roadmap (Pós-Férias)</h2>
+
+<table>
+<tbody>
+<tr style="background: #f5f5f5;">
+<td><strong>Setembro 2026 (AGORA)</strong></td>
+<td>✅ Piloto visual com KPIs + tabelas</td>
+</tr>
+<tr>
+<td><strong>Outubro 2026</strong></td>
+<td>📊 Screenshots de gráficos no Confluence</td>
+</tr>
+<tr style="background: #f5f5f5;">
+<td><strong>Novembro 2026</strong></td>
+<td>🔗 Accordion/tabs para organizar visões</td>
+</tr>
+<tr>
+<td><strong>Dezembro 2026</strong></td>
+<td>📈 Comparativo histórico (mês a mês)</td>
+</tr>
+<tr style="background: #f5f5f5;">
+<td><strong>2027+</strong></td>
+<td>🚀 App Forge (dado ao vivo, botão atualizar)</td>
+</tr>
+</tbody>
+</table>
+
+<hr/>
+
+<h2 style="color: #003366; border-left: 4px solid #FF6B35; padding-left: 12px;">📞 Suporte</h2>
+
+<p>Para dúvidas técnicas ou melhorias, entre em contato com o time de TI.</p>
+
+<p style="font-size: 12px; color: #999; margin-top: 32px;">
+<strong>SDPREJ v2.0 Premium</strong> • Trend Operadora • Dashboard Automatizado de Prejudica<br/>
+Atualizado automaticamente | Dados do Jira em tempo real | Estrutura preparada para evolução
+</p>
+`;
+
+fs.writeFileSync(path.join(__dirname, 'documentation-content.html'), html, 'utf8');
+console.log('✅ documentation-content.html gerado!');
+console.log(`   ${(html.length / 1024).toFixed(1)} KB\n`);
+console.log('⏭️  Próxima etapa: Publicar no Confluence\n');
