@@ -33,19 +33,7 @@ jobs:
       - name: 🔨 Compilar painel
         run: node build.js
 
-      # 5. Publica no Confluence
-      - name: 📤 Publicar no Confluence
-        run: |
-          node generate-confluence-premium.js
-          node generate-documentation-page.js
-          node publish-confluence.js
-          node publish-documentation.js
-          node create-painel-page.js
-        env:
-          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
-
-      # 6. Copia painel pra pasta do GitHub Pages
+      # 5. Copia painel pra pasta do GitHub Pages
       - name: 📁 Preparar para GitHub Pages
         run: |
           mkdir -p gh-pages
