@@ -10,22 +10,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
-// Obtém o IP local da máquina
-function getLocalIP() {
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return 'localhost';
-}
-
-const LOCAL_IP = getLocalIP();
+// URL do GitHub Pages — acessível publicamente
+const PAINEL_URL = 'https://AndersonLeoni.github.io/sdprej-trend/';
 
 const DT = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'temas.json'), 'utf8'));
 const DA = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'analistas.json'), 'utf8'));
@@ -91,7 +78,7 @@ let html = `<p><strong>📊 SDPREJ — Dashboard de Prejuízos</strong></p>
 <ac:rich-text-body>
 <p><strong>Acesse o painel completo com gráficos dinâmicos, filtros interativos e análises em tempo real.</strong></p>
 <p style="margin: 12px 0 0 0;">
-<a href="http://${LOCAL_IP}:8000/SDPREJ_Painel.html" target="_blank" style="display: inline-block; background: #003366; color: white; padding: 10px 20px; border-radius: 4px; font-weight: bold; font-size: 14px; text-decoration: none;">→ ABRIR PAINEL INTERATIVO</a>
+<a href="${PAINEL_URL}" target="_blank" style="display: inline-block; background: #003366; color: white; padding: 10px 20px; border-radius: 4px; font-weight: bold; font-size: 14px; text-decoration: none;">→ ABRIR PAINEL INTERATIVO</a>
 </p>
 <p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Navegação: Temas • Analistas • GDIS | Filtros • Gráficos • Dados ao vivo</p>
 </ac:rich-text-body>

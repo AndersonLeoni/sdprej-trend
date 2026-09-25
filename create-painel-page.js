@@ -8,22 +8,9 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
-// Obtém o IP local da máquina
-function getLocalIP() {
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return 'localhost';
-}
-
-const LOCAL_IP = getLocalIP();
+// URL do GitHub Pages — acessível publicamente
+const PAINEL_URL = 'https://AndersonLeoni.github.io/sdprej-trend/';
 
 // Lê configuração do arquivo
 const configPath = path.join(__dirname, 'config.json');
@@ -111,7 +98,7 @@ function httpsRequest(method, url, body) {
 </ac:structured-macro>
 
 <p style="text-align: center; margin: 24px 0;">
-<a href="http://${LOCAL_IP}:8000/SDPREJ_Painel.html" target="_blank" style="display: inline-block; background: #003366; color: white; padding: 12px 24px; border-radius: 4px; font-weight: bold; font-size: 16px; text-decoration: none;">→ ABRIR PAINEL COMPLETO</a>
+<a href="${PAINEL_URL}" target="_blank" style="display: inline-block; background: #003366; color: white; padding: 12px 24px; border-radius: 4px; font-weight: bold; font-size: 16px; text-decoration: none;">→ ABRIR PAINEL COMPLETO</a>
 </p>
 
 <h2>📊 Visões Disponíveis</h2>
