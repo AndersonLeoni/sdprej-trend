@@ -1,4 +1,4 @@
-name: 📊 Atualizar Painel SDPREJ 
+name: 📊 Atualizar Painel SDPREJ
 
 on:
   schedule:
@@ -40,14 +40,14 @@ jobs:
           cp dist/SDPREJ_Painel.html gh-pages/index.html
           echo "✅ Painel pronto para publicar"
 
-      # 7. Faz upload pra branch gh-pages
+      # 6. Faz upload pra branch gh-pages
       - name: 🚀 Deploy no GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./gh-pages
 
-      # 8. Notificação final
+      # 7. Notificação final
       - name: ✅ Concluído
         run: |
           echo "✨ Painel atualizado com sucesso!"
