@@ -7,6 +7,10 @@ on:
   # Também permite rodar manualmente
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pages: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
