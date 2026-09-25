@@ -2,8 +2,10 @@ name: 📊 Atualizar Painel SDPREJ
 
 on:
   schedule:
-    # Roda todo dia às 8:00 da manhã (UTC-3 = 11:00 UTC)
-    - cron: '0 11 * * *'
+    # Roda de segunda a sexta às 8:00 da manhã (UTC-3 = 11:00 UTC)
+    # Formato cron: minuto hora dia-mês mês dia-semana
+    # 1-5 = seg-sex
+    - cron: '0 11 * * 1-5'
   # Também permite rodar manualmente
   workflow_dispatch:
 
