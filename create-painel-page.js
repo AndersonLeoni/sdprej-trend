@@ -11,6 +11,7 @@ const path = require('path');
 
 // URL do GitHub Pages — acessível publicamente
 const PAINEL_URL = 'https://AndersonLeoni.github.io/sdprej-trend/';
+const GITHUB_USER = 'AndersonLeoni';
 
 // Lê configuração do arquivo
 const configPath = path.join(__dirname, 'config.json');
@@ -185,7 +186,7 @@ function httpsRequest(method, url, body) {
       }
     }
 
-    console.log('✅ Link atualizado com IP: ' + LOCAL_IP);
+    console.log('✅ Link atualizado para GitHub Pages!');
 
   } catch (err) {
     console.error('❌ Erro:', err.message);

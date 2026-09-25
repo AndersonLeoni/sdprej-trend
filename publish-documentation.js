@@ -88,9 +88,10 @@ function httpsRequest(method, url, body) {
     if (searchRes.status === 200 && searchRes.body.results && searchRes.body.results.length > 0) {
       // Página existe — atualiza
       const page = searchRes.body.results[0];
+      const pageId = page.id;
       const version = (page.version && page.version.number) ? page.version.number : 1;
 
-      console.log(`📄 Página encontrada (ID: ${page.id}). Atualizando...\n`);
+      console.log(`📄 Página encontrada (ID: ${pageId}). Atualizando versão ${version} → ${version + 1}...\n`);
 
       const updateBody = {
         version: { number: version + 1 },
@@ -106,13 +107,13 @@ function httpsRequest(method, url, body) {
 
       const updateRes = await httpsRequest(
         'PUT',
-        `${BASE_URL}/rest/api/content/${page.id}`,
+        `${BASE_URL}/rest/api/content/${pageId}`,
         JSON.stringify(updateBody)
       );
 
       if (updateRes.status === 200) {
         console.log('✅ Documentação atualizada com sucesso!\n');
-        console.log(`🔗 ${BASE_URL}/spaces/${config.confluence.spaceKey}/pages/${page.id}\n`);
+        console.log(`🔗 ${BASE_URL}/spaces/${config.confluence.spaceKey}/pages/${pageId}\n`);
       } else {
         console.error(`❌ Erro ${updateRes.status}`);
         console.log(JSON.stringify(updateRes.body, null, 2));
