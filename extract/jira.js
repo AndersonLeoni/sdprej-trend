@@ -23,7 +23,9 @@ function config() {
   const arq = path.join(RAIZ, 'config.json');
   const exemplo = path.join(RAIZ, 'config.example.json');
   const base = fs.existsSync(arq) ? arq : exemplo;
-  const cfg = JSON.parse(fs.readFileSync(base, 'utf8'));
+  let rawData = fs.readFileSync(base, 'utf8');
+  if (rawData.charCodeAt(0) === 0xFEFF) rawData = rawData.slice(1);
+  const cfg = JSON.parse(rawData);
 
   cfg.email = process.env.JIRA_EMAIL || cfg.email || '';
   cfg.token = process.env.JIRA_TOKEN || '';
