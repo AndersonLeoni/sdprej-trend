@@ -1,4 +1,4 @@
-name: 📊 Atualizar Painel SDPREJ
+name: 📊 Atualizar Painel SDPREJ 
 
 on:
   schedule:
