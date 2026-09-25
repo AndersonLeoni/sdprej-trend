@@ -27,23 +27,22 @@ function config() {
   if (rawData.charCodeAt(0) === 0xFEFF) rawData = rawData.slice(1);
   const cfg = JSON.parse(rawData);
 
-  cfg.email = process.env.JIRA_EMAIL || cfg.email || '';
-  cfg.token = process.env.JIRA_TOKEN || '';
+  cfg.email = process.env.JIRA_EMAIL || cfg.jira?.email || '';
+  cfg.token = process.env.JIRA_TOKEN || cfg.jira?.token || '';
 
   if (!cfg.token) {
     console.error(
       '\nJIRA_TOKEN nao esta definido.\n\n' +
-      'Gere um token em https://id.atlassian.com/manage-profile/security/api-tokens\n' +
-      'e grave-o na sua conta de usuario (uma vez so):\n\n' +
+      'Opcao 1 - Variavel de ambiente:\n' +
       '    setx JIRA_TOKEN "cole-o-token-aqui"\n' +
       '    setx JIRA_EMAIL "seu.email@cvccorp.com.br"\n\n' +
-      'Abra um terminal novo depois do setx. O token nao entra em nenhum\n' +
-      'arquivo do repositorio.\n'
+      'Opcao 2 - Arquivo config.json (ja existente)\n' +
+      'O token nao deve entrar em arquivo versionado do repositorio.\n'
     );
     process.exit(1);
   }
   if (!cfg.email) {
-    console.error('JIRA_EMAIL nao esta definido (setx JIRA_EMAIL "...").');
+    console.error('JIRA_EMAIL nao esta definido.');
     process.exit(1);
   }
   return cfg;
