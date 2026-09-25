@@ -1,0 +1,389 @@
+<p><strong>📊 SDPREJ — Dashboard de Prejuízos</strong></p>
+<p style="font-size: 12px; color: #666;">Trend Operadora — Gestão Centralizada de Reclamações e Análise de Risco | 📅 25/09/2026, 12:30:06 | 🔄 Atualização Automática: Diária</p>
+
+<h2 style="color: #003366; border-left: 4px solid #FF6B35; padding-left: 12px; margin-top: 16px;">📊 RESUMO EXECUTIVO — KPIs PRINCIPAIS</h2>
+
+<table style="width: 100%; border-spacing: 8px; border-collapse: separate;">
+<tbody>
+<tr>
+<td style="background: #e3f2fd; border-left: 4px solid #1976d2; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 28px; font-weight: bold; color: #1565c0;">638</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Chamados em Análise</strong></div>
+<div style="font-size: 10px; color: #666;">Status: Ativo</div>
+</td>
+
+<td style="background: #e8f5e9; border-left: 4px solid #388e3c; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 24px; font-weight: bold; color: #2e7d32;">R$ 1.146.294</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Valor Reclamado</strong></div>
+<div style="font-size: 10px; color: #666;">Total de Prejuízos</div>
+</td>
+
+<td style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 28px; font-weight: bold; color: #c62828;">334</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Acima de 180 dias</strong></div>
+<div style="font-size: 10px; color: #c62828; font-weight: bold;">⚠️ RISCO DE PRESCRIÇÃO</div>
+</td>
+
+<td style="background: #fff3e0; border-left: 4px solid #f57c00; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 28px; font-weight: bold; color: #e65100;">733</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Parados em TI</strong></div>
+<div style="font-size: 10px; color: #e65100; font-weight: bold;">🔴 CRÍTICO</div>
+</td>
+
+<td style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 24px; font-weight: bold; color: #c62828;">R$ 2.034.614</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Valor Retido</strong></div>
+<div style="font-size: 10px; color: #c62828; font-weight: bold;">💔 BLOQUEADO</div>
+</td>
+
+<td style="background: #f3e5f5; border-left: 4px solid #7b1fa2; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 28px; font-weight: bold; color: #6a1b9a;">955</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Ciclos Concluídos</strong></div>
+<div style="font-size: 10px; color: #666;">Análises Entregues</div>
+</td>
+</tr>
+</tbody>
+</table>
+
+<ac:structured-macro ac:name="warning">
+<ac:parameter ac:name="title">🖥️ PAINEL INTERATIVO DISPONÍVEL</ac:parameter>
+<ac:rich-text-body>
+<p><strong>Acesse o painel completo com gráficos dinâmicos, filtros interativos e análises em tempo real.</strong></p>
+<p style="margin: 12px 0 0 0;">
+<a href="http://10.213.12.91:8000/SDPREJ_Painel.html" target="_blank" style="display: inline-block; background: #003366; color: white; padding: 10px 20px; border-radius: 4px; font-weight: bold; font-size: 14px; text-decoration: none;">→ ABRIR PAINEL INTERATIVO</a>
+</p>
+<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Navegação: Temas • Analistas • GDIS | Filtros • Gráficos • Dados ao vivo</p>
+</ac:rich-text-body>
+</ac:structured-macro>
+
+<hr/>
+
+<h1>📋 VISÃO 1: TEMAS</h1>
+<p>Distribuição dos chamados pelo padrão derivado e valor reclamado.</p>
+
+<h3>Classificação por Tema</h3>
+<table>
+<tbody>
+<tr><th>Tema</th><th>Chamados</th><th>Valor Reclamado</th><th>% Total</th></tr>
+
+<tr>
+<td>Integracao Omnibees/Trend (RES)</td>
+<td>262</td>
+<td style="text-align: right;"><strong>R$ 290.611</strong></td>
+<td style="text-align: right;">25.4%</td>
+</tr>
+<tr>
+<td>Reserva SIG (211...)</td>
+<td>158</td>
+<td style="text-align: right;"><strong>R$ 320.204</strong></td>
+<td style="text-align: right;">27.9%</td>
+</tr>
+<tr>
+<td>Reserva Orfa (nao integrada)</td>
+<td>76</td>
+<td style="text-align: right;"><strong>R$ 124.678</strong></td>
+<td style="text-align: right;">10.9%</td>
+</tr>
+<tr>
+<td>Outros / Nao classificado</td>
+<td>53</td>
+<td style="text-align: right;"><strong>R$ 152.657</strong></td>
+<td style="text-align: right;">13.3%</td>
+</tr>
+<tr>
+<td>Localizador GDS/Aereo</td>
+<td>46</td>
+<td style="text-align: right;"><strong>R$ 165.698</strong></td>
+<td style="text-align: right;">14.5%</td>
+</tr>
+<tr>
+<td>Reserva Trend (4000...)</td>
+<td>16</td>
+<td style="text-align: right;"><strong>R$ 50.862</strong></td>
+<td style="text-align: right;">4.4%</td>
+</tr>
+<tr>
+<td>Reacomodacao / Realocacao</td>
+<td>16</td>
+<td style="text-align: right;"><strong>R$ 27.005</strong></td>
+<td style="text-align: right;">2.4%</td>
+</tr>
+<tr>
+<td>Cancelamento sem integracao</td>
+<td>4</td>
+<td style="text-align: right;"><strong>R$ 2.477</strong></td>
+<td style="text-align: right;">0.2%</td>
+</tr>
+<tr>
+<td>Outros (5 categorias)</td>
+<td>7</td>
+<td style="text-align: right;"><strong>R$ 12.102</strong></td>
+<td style="text-align: right;">1.1%</td>
+</tr>
+</tbody>
+</table>
+
+<h3>Top 10 Chamados por Valor</h3>
+<table>
+<tbody>
+<tr><th>Chave</th><th>Tema</th><th>Dias</th><th>Valor R$</th></tr>
+<tr>
+<td><strong>SDPREJ-40480</strong></td>
+<td>Reserva SIG (211...)</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">356d</td>
+<td style="text-align: right;"><strong>R$ 26.655</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-41179</strong></td>
+<td>Integracao Omnibees/Trend (RES</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">328d</td>
+<td style="text-align: right;"><strong>R$ 26.268</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-43707</strong></td>
+<td>Localizador GDS/Aereo</td>
+<td >113d</td>
+<td style="text-align: right;"><strong>R$ 26.193</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-42792</strong></td>
+<td>Reserva Trend (4000...)</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">211d</td>
+<td style="text-align: right;"><strong>R$ 25.800</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-43572</strong></td>
+<td>Reserva SIG (211...)</td>
+<td >134d</td>
+<td style="text-align: right;"><strong>R$ 24.599</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-42168</strong></td>
+<td>Reserva SIG (211...)</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">267d</td>
+<td style="text-align: right;"><strong>R$ 23.609</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-42663</strong></td>
+<td>Integracao Omnibees/Trend (RES</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">216d</td>
+<td style="text-align: right;"><strong>R$ 20.664</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-45732</strong></td>
+<td>Reserva Orfa (nao integrada)</td>
+<td >10d</td>
+<td style="text-align: right;"><strong>R$ 19.009</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-41137</strong></td>
+<td>Outros / Nao classificado</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">332d</td>
+<td style="text-align: right;"><strong>R$ 18.703</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-40976</strong></td>
+<td>Reserva SIG (211...)</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">336d</td>
+<td style="text-align: right;"><strong>R$ 15.744</strong></td>
+</tr>
+</tbody>
+</table>
+
+<hr/>
+
+<h1>👤 VISÃO 2: ANALISTAS</h1>
+<p><strong style="color: #c00;">⚠️ 733 chamados aguardando supervisão</strong> • Valor retido: <strong>R$ 2.034.614</strong></p>
+
+<h3>Maior Tempo de Espera (Top 10)</h3>
+<table>
+<tbody>
+<tr><th>Chave</th><th>Analista</th><th>Dias</th><th>Valor R$</th></tr>
+<tr>
+<td><strong>SDPREJ-37594</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 217</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-36844</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 115</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-36841</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 206</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-36838</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 434</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-36754</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 93</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-36748</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 36</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-36736</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 161</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-36715</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 310</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-36694</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 62</strong></td>
+</tr><tr>
+<td><strong>SDPREJ-36685</strong></td>
+<td>Roberto de Jesus Car</td>
+<td style="background: #ffe0e0; color: #c00; font-weight: bold;">446d</td>
+<td style="text-align: right;"><strong>R$ 62</strong></td>
+</tr>
+</tbody>
+</table>
+
+<h3>Fila por Faixa de Dias</h3>
+<table>
+<tbody>
+<tr><th>Faixa</th><th>Chamados</th><th>Valor Total</th></tr>
+<tr >
+<td><strong>0-30 dias</strong></td>
+<td>199</td>
+<td style="text-align: right; "><strong>R$ 338.664</strong></td>
+</tr><tr >
+<td><strong>31-90 dias</strong></td>
+<td>203</td>
+<td style="text-align: right; "><strong>R$ 362.218</strong></td>
+</tr><tr >
+<td><strong>91-180 dias</strong></td>
+<td>70</td>
+<td style="text-align: right; "><strong>R$ 593.953</strong></td>
+</tr><tr style="background: #ffe0e0;">
+<td><strong>181+ dias</strong></td>
+<td>261</td>
+<td style="text-align: right; color: #c00; font-weight: bold;"><strong>R$ 739.778</strong></td>
+</tr>
+</tbody>
+</table>
+
+<hr/>
+
+<h1>🔗 VISÃO 3: GDIS</h1>
+<p>Rastreamento de chamados vinculados a GDIS.</p>
+
+<h3>Situação dos GDIS</h3>
+<table>
+<tbody>
+<tr><th>Situação</th><th>Chamados</th><th>Valor R$</th><th>% Total</th></tr>
+<tr>
+<td>Fechado</td>
+<td>1.172</td>
+<td style="text-align: right;"><strong>R$ 2.811.867</strong></td>
+<td style="text-align: right;">245.3%</td>
+</tr><tr>
+<td>Em análise Nível 1</td>
+<td>151</td>
+<td style="text-align: right;"><strong>R$ 212.383</strong></td>
+<td style="text-align: right;">18.5%</td>
+</tr><tr>
+<td>Sem classificação</td>
+<td>113</td>
+<td style="text-align: right;"><strong>R$ 404.093</strong></td>
+<td style="text-align: right;">35.3%</td>
+</tr><tr>
+<td>Em Análise Nível 3</td>
+<td>41</td>
+<td style="text-align: right;"><strong>R$ 25.574</strong></td>
+<td style="text-align: right;">2.2%</td>
+</tr><tr>
+<td>Aguardando Validação do Usuario</td>
+<td>14</td>
+<td style="text-align: right;"><strong>R$ 23.771</strong></td>
+<td style="text-align: right;">2.1%</td>
+</tr><tr>
+<td>Cancelado pelo solicitante</td>
+<td>4</td>
+<td style="text-align: right;"><strong>R$ 15.425</strong></td>
+<td style="text-align: right;">1.3%</td>
+</tr><tr>
+<td>A Concluir</td>
+<td>4</td>
+<td style="text-align: right;"><strong>R$ 5.009</strong></td>
+<td style="text-align: right;">0.4%</td>
+</tr><tr>
+<td>Em análise nível 2</td>
+<td>3</td>
+<td style="text-align: right;"><strong>R$ 4.757</strong></td>
+<td style="text-align: right;">0.4%</td>
+</tr><tr>
+<td>Cancelado</td>
+<td>2</td>
+<td style="text-align: right;"><strong>R$ 648</strong></td>
+<td style="text-align: right;">0.1%</td>
+</tr><tr>
+<td>Resolvido</td>
+<td>2</td>
+<td style="text-align: right;"><strong>R$ 8.924</strong></td>
+<td style="text-align: right;">0.8%</td>
+</tr>
+</tbody>
+</table>
+
+<h3>GDIS com Múltiplos Chamados</h3>
+<table>
+<tbody>
+<tr><th>GDIS</th><th>Chamados Vinculados</th><th>Valor Total</th></tr>
+<tr>
+<td><strong>GDIS-190788</strong></td>
+<td>22 chamados</td>
+<td style="text-align: right;"><strong>R$ 8.103</strong></td>
+</tr><tr>
+<td><strong>GDIS-172431</strong></td>
+<td>10 chamados</td>
+<td style="text-align: right;"><strong>R$ 17.590</strong></td>
+</tr><tr>
+<td><strong>GDIS-168502</strong></td>
+<td>9 chamados</td>
+<td style="text-align: right;"><strong>R$ 1.409</strong></td>
+</tr><tr>
+<td><strong>GDIS-169387</strong></td>
+<td>9 chamados</td>
+<td style="text-align: right;"><strong>R$ 8.899</strong></td>
+</tr><tr>
+<td><strong>GDIS-132797</strong></td>
+<td>8 chamados</td>
+<td style="text-align: right;"><strong>R$ 8.291</strong></td>
+</tr><tr>
+<td><strong>GDIS-200068</strong></td>
+<td>7 chamados</td>
+<td style="text-align: right;"><strong>R$ 5.786</strong></td>
+</tr><tr>
+<td><strong>GDIS-176921</strong></td>
+<td>7 chamados</td>
+<td style="text-align: right;"><strong>R$ 29.008</strong></td>
+</tr><tr>
+<td><strong>GDIS-198389</strong></td>
+<td>6 chamados</td>
+<td style="text-align: right;"><strong>R$ 3.136</strong></td>
+</tr><tr>
+<td><strong>GDIS-181618</strong></td>
+<td>6 chamados</td>
+<td style="text-align: right;"><strong>R$ 25.733</strong></td>
+</tr><tr>
+<td><strong>GDIS-199353</strong></td>
+<td>5 chamados</td>
+<td style="text-align: right;"><strong>R$ 3.753</strong></td>
+</tr>
+</tbody>
+</table>
+
+<hr/>
+
+<p style="font-size: 11px; color: #999; text-align: center; margin-top: 32px;">
+✅ Dashboard SDPREJ Premium — Trend Operadora<br/>
+📊 Dados atualizados automaticamente do Jira<br/>
+🔄 Atualização: Diária | 🖥️ Servidor: Ativo<br/>
+Versão 2.0 — Design Premium
+</p>

@@ -111,6 +111,11 @@
     <div class="cs">Top 12 pelo campo <em>Cliente</em>.</div>
     <div class="hbars" id="ch-cli"></div>
   </section>
+  <section class="card">
+    <h2>Valor por Departamento Responsável</h2>
+    <div class="cs" id="cs-dept">Valor acumulado por departamento.</div>
+    <div class="hbars" id="ch-dept"></div>
+  </section>
   <section class="card wide">
     <h2>Chamados</h2>
     <div class="cs">Visão tabular do recorte filtrado — clique no cabeçalho para ordenar, na chave para abrir no Jira.</div>
@@ -322,6 +327,11 @@
       <option value="3">Últimos 3 meses</option>
       <option value="6">Últimos 6 meses</option>
       <option value="12">Últimos 12 meses</option>
+    </select></div>
+  <div><label for="fFaixa">Faixa de dias na fila</label>
+    <select id="fFaixa">
+      <option value="" selected>Todas as faixas</option>
+      <!-- opções preenchidas por app.js com os valores de FQ -->
     </select></div>
   <div class="sp"></div>
   <div><button class="btn" id="a-clear">Limpar filtros</button></div>
