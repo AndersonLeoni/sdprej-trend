@@ -73,8 +73,8 @@ let html = `<p><strong>📊 SDPREJ — Dashboard de Prejuízos</strong></p>
 </tbody>
 </table>
 
-<ac:structured-macro ac:name="warning">
-<ac:parameter ac:name="title">🖥️ PAINEL INTERATIVO DISPONÍVEL</ac:parameter>
+<ac:structured-macro ac:name="tip">
+<ac:parameter ac:name="title">✅ PAINEL INTERATIVO DISPONÍVEL</ac:parameter>
 <ac:rich-text-body>
 <p><strong>Acesse o painel completo com gráficos dinâmicos, filtros interativos e análises em tempo real.</strong></p>
 <p style="margin: 12px 0 0 0;">
