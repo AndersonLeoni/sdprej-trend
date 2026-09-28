@@ -92,9 +92,11 @@ function httpsRequest(method, url, body) {
   const pageContent = `<p><strong>🖥️ PAINEL SDPREJ — Gráficos Interativos em Tempo Real</strong></p>
 <p style="font-size: 13px; color: #666;">Trend Operadora — Três visões: Temas • Analistas • GDIS</p>
 
-<ac:structured-macro ac:name="info">
+<ac:structured-macro ac:name="note">
+<ac:parameter ac:name="icon">true</ac:parameter>
 <ac:rich-text-body>
-<p>Painel completo com gráficos dinâmicos, filtros interativos e dados atualizados automaticamente do Jira.</p>
+<p><strong>✅ PAINEL INTERATIVO DISPONÍVEL</strong></p>
+<p>Acesse o painel completo com gráficos dinâmicos, filtros interativos e análises em tempo real.</p>
 </ac:rich-text-body>
 </ac:structured-macro>
 
