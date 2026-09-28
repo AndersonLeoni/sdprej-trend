@@ -89,7 +89,19 @@ function httpsRequest(method, url, body) {
       // Página existe — atualiza
       const page = searchRes.body.results[0];
       const pageId = page.id;
-      const version = (page.version && page.version.number) ? page.version.number : 1;
+
+      // Fetch a versão mais recente diretamente pelo ID
+      const pageDetailRes = await httpsRequest(
+        'GET',
+        `${BASE_URL}/rest/api/content/${pageId}?expand=version`
+      );
+
+      if (pageDetailRes.status !== 200) {
+        console.error(`❌ Erro ao buscar versão atual: ${pageDetailRes.status}`);
+        process.exit(1);
+      }
+
+      const version = (pageDetailRes.body.version && pageDetailRes.body.version.number) ? pageDetailRes.body.version.number : 1;
 
       console.log(`📄 Página encontrada (ID: ${pageId}). Atualizando versão ${version} → ${version + 1}...\n`);
 
