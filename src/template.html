@@ -23,6 +23,7 @@
     <button type="button" role="tab" id="tab-temas" aria-selected="true" aria-controls="view-temas">Visão geral por tema</button>
     <button type="button" role="tab" id="tab-gdis" aria-selected="false" aria-controls="view-gdis">Vínculo com GDIS</button>
     <button type="button" role="tab" id="tab-ana" aria-selected="false" aria-controls="view-ana">Por analista</button>
+    <button type="button" role="tab" id="tab-rel" aria-selected="false" aria-controls="view-rel">📋 Relatório de Problemas</button>
   </div>
   <div class="sp"></div>
   <span class="chip" id="chipGer"></span>
@@ -403,6 +404,106 @@
   <b>Trocas de área:</b> alterações de <i>Departamento responsável</i> ou <i>Área responsável</i> com origem e destino
   válidos; registros com texto livre no campo foram descartados.
 </footer>
+</section>
+
+<!-- ============================ VIEW 4: RELATÓRIO ============================ -->
+<section id="view-rel" role="tabpanel" aria-labelledby="tab-rel" hidden>
+
+<div class="hdr">
+  <h1>📋 Relatório — GDIS/SUST e Impacto em SDPREJ</h1>
+  <div class="lead">
+    Rastreamento de problemas identificados (GDIS e SUST) e sua correlação com chamados de prejuízo. Agrupa por status: aberto, em correção (nível 3), e corrigido.
+  </div>
+</div>
+
+<div class="controls" role="group" aria-label="Filtros do relatório de problemas">
+  <div><label for="fRelStatus">Status</label><select id="fRelStatus">
+    <option value="">Todos</option>
+    <option value="aberto">🔴 Abertos</option>
+    <option value="em_correcao">🟡 Em Correção</option>
+    <option value="corrigido">✅ Corrigidos</option>
+  </select></div>
+  <div><label for="fRelPrio">Prioridade</label><select id="fRelPrio">
+    <option value="">Todas</option>
+  </select></div>
+  <div class="sp"></div>
+  <div><button class="btn" id="rel-clear">Limpar filtros</button></div>
+</div>
+
+<!-- KPIs de Status -->
+<div class="grid">
+  <section class="card">
+    <h2>🔴 Abertos</h2>
+    <div class="kpi-big" id="rel-abertos-count">0</div>
+    <div class="kpi-sub" id="rel-abertos-valor">R$ 0</div>
+  </section>
+  <section class="card">
+    <h2>🟡 Em Correção</h2>
+    <div class="kpi-big" id="rel-emcor-count">0</div>
+    <div class="kpi-sub" id="rel-emcor-valor">R$ 0</div>
+  </section>
+  <section class="card">
+    <h2>✅ Corrigidos</h2>
+    <div class="kpi-big" id="rel-corrigido-count">0</div>
+    <div class="kpi-sub" id="rel-corrigido-valor">R$ 0</div>
+  </section>
+  <section class="card">
+    <h2>📊 SDPREJ Impactados</h2>
+    <div class="kpi-big" id="rel-total-sdprej">0</div>
+    <div class="kpi-sub" id="rel-total-valor">R$ 0</div>
+  </section>
+</div>
+
+<!-- Tabelas por Status -->
+<div class="grid">
+  <section class="card wide">
+    <h2>🔴 Problemas Abertos</h2>
+    <div class="tbl">
+      <table class="dt" id="rel-table-abertos">
+        <thead><tr>
+          <th data-s="chave">Chave</th>
+          <th data-s="tipo">Tipo</th>
+          <th data-s="prioridade">Prioridade</th>
+          <th style="text-align:right">SDPREJ</th>
+          <th style="text-align:right">Valor R$</th>
+          <th style="text-align:right">Dias</th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="note" id="rel-note-abertos">Nenhum problema aberto.</div>
+  </section>
+
+  <section class="card wide">
+    <h2>🟡 Em Correção (Nível 3)</h2>
+    <div class="tbl">
+      <table class="dt" id="rel-table-emcor">
+        <thead><tr>
+          <th data-s="chave">Chave</th>
+          <th data-s="summary">Descrição</th>
+          <th style="text-align:right">SDPREJ</th>
+          <th style="text-align:right">Valor R$</th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="note" id="rel-note-emcor">Nenhum problema em correção.</div>
+  </section>
+
+  <section class="card wide">
+    <h2>✅ Corrigidos</h2>
+    <div class="tbl sm">
+      <table class="dt" id="rel-table-corrigido">
+        <thead><tr>
+          <th data-s="chave">Chave</th>
+          <th data-s="resolvidoEm">Resolvido em</th>
+          <th style="text-align:right">SDPREJ</th>
+          <th style="text-align:right">Valor R$</th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="note" id="rel-note-corrigido">Nenhum problema corrigido.</div>
+  </section>
+</div>
+
 </section>
 
 </div>
