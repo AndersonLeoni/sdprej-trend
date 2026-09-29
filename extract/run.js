@@ -27,7 +27,7 @@ const VISOES = {
   temas:     { arq: 'temas.json',     mod: './temas',     rotulo: 'visao por tema' },
   analistas: { arq: 'analistas.json', mod: './analistas', rotulo: 'visao por analista' },
   gdis:      { arq: 'gdis.json',      mod: './gdis',      rotulo: 'vinculo com GDIS' },
-  problemas: { arq: 'problemas.json', mod: './problemas', rotulo: 'relatorio de problemas GDIS/SUST' },
+  // problemas: desativado — será implementado pós-férias com lógica de app.js
 };
 
 async function main() {

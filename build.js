@@ -25,12 +25,12 @@ const read = f => fs.readFileSync(p(f), 'utf8');
 /* o template foi recortado com LF; o build preserva isso */
 const EOL = '\n';
 
-/* os quatro payloads, na ordem em que o app.js os consome */
+/* os tres payloads, na ordem em que o app.js os consome */
 const DADOS = [
   { nome: 'DT', arq: 'data/temas.json' },
   { nome: 'DA', arq: 'data/analistas.json' },
   { nome: 'GD', arq: 'data/gdis.json' },
-  { nome: 'PR', arq: 'data/problemas.json' },
+  // PR será adicionado quando app.js suportar Visão 4 (pós-férias)
 ];
 
 function main() {
