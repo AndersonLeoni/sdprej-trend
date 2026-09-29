@@ -28,6 +28,15 @@ if %errorlevel% neq 0 (
 )
 
 echo.
+echo ✓ Passo 2b: Gerando relatório de problemas...
+node generate-relatorio-problemas.js
+if %errorlevel% neq 0 (
+    echo ❌ Erro ao gerar relatório. Abortando.
+    pause
+    exit /b 1
+)
+
+echo.
 echo ✓ Passo 3: Gerando conteúdo premium para Confluence...
 node generate-confluence-premium.js
 if %errorlevel% neq 0 (
