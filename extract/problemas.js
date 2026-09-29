@@ -106,83 +106,72 @@ function extrairDatas(issue) {
 }
 
 /**
- * Processa tudo
+ * Função de exportação (padrão usado por extract/run.js)
  */
-async function main() {
-  try {
-    const problemas = await buscarProblemas();
+async function montar(cfg, agora) {
+  const problemas = await buscarProblemas();
 
-    console.error('📊 Processando impactos...\n');
+  console.error('📊 Processando impactos...\n');
 
-    const resultado = {
-      geradoEm: new Date().toISOString().split('T')[0],
-      total: problemas.length,
-      aberto: [],
-      em_correcao: [],
-      corrigido: [],
-      sumario: {
-        totalChamadosSdprej: 0,
-        totalValorImpactado: 0
-      }
+  const resultado = {
+    geradoEm: agora.toISOString().split('T')[0],
+    total: problemas.length,
+    aberto: [],
+    em_correcao: [],
+    corrigido: [],
+    sumario: {
+      totalChamadosSdprej: 0,
+      totalValorImpactado: 0
+    }
+  };
+
+  for (let i = 0; i < problemas.length; i++) {
+    const issue = problemas[i];
+    const statusAtual = mapStatus(issue.fields.status?.name);
+
+    const impacto = await buscarImpacto(issue.key);
+    const datas = extrairDatas(issue);
+
+    const registro = {
+      chave: issue.key,
+      tipo: issue.fields.issuetype?.name || 'Desconhecido',
+      status: statusAtual,
+      summary: issue.fields.summary,
+      prioridade: issue.fields.priority?.name || '-',
+      criador: issue.fields.reporter?.displayName || 'Desconhecido',
+      criadoEm: datas.criadoEm,
+      atualizadoEm: datas.atualizadoEm,
+      resolvidoEm: datas.resolvidoEm,
+      sdprejImpactados: impacto.chamados,
+      quantidadeSdprej: impacto.chamados.length,
+      valorTotalImpactado: impacto.valor,
+      diasAberto: Math.floor((new Date() - new Date(datas.criadoEm)) / (1000 * 60 * 60 * 24)),
+      link: `https://cvccorp.atlassian.net/browse/${issue.key}`
     };
 
-    for (let i = 0; i < problemas.length; i++) {
-      const issue = problemas[i];
-      const statusAtual = mapStatus(issue.fields.status?.name);
+    resultado.sumario.totalChamadosSdprej += impacto.chamados.length;
+    resultado.sumario.totalValorImpactado += impacto.valor;
 
-      // Busca impacto
-      const impacto = await buscarImpacto(issue.key);
-      const datas = extrairDatas(issue);
+    if (statusAtual === 'corrigido') resultado.corrigido.push(registro);
+    else if (statusAtual === 'em_correcao') resultado.em_correcao.push(registro);
+    else resultado.aberto.push(registro);
 
-      const registro = {
-        chave: issue.key,
-        tipo: issue.fields.issuetype?.name || 'Desconhecido',
-        status: statusAtual,
-        summary: issue.fields.summary,
-        prioridade: issue.fields.priority?.name || '-',
-        criador: issue.fields.reporter?.displayName || 'Desconhecido',
-        criadoEm: datas.criadoEm,
-        atualizadoEm: datas.atualizadoEm,
-        resolvidoEm: datas.resolvidoEm,
-        sdprejImpactados: impacto.chamados,
-        quantidadeSdprej: impacto.chamados.length,
-        valorTotalImpactado: impacto.valor,
-        diasAberto: Math.floor((new Date() - new Date(datas.criadoEm)) / (1000 * 60 * 60 * 24)),
-        link: `https://cvccorp.atlassian.net/browse/${issue.key}`
-      };
-
-      resultado.sumario.totalChamadosSdprej += impacto.chamados.length;
-      resultado.sumario.totalValorImpactado += impacto.valor;
-
-      if (statusAtual === 'corrigido') resultado.corrigido.push(registro);
-      else if (statusAtual === 'em_correcao') resultado.em_correcao.push(registro);
-      else resultado.aberto.push(registro);
-
-      if ((i + 1) % 10 === 0) console.error(`   ${i + 1}/${problemas.length}`);
-    }
-
-    // Ordena por data
-    resultado.aberto.sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
-    resultado.em_correcao.sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
-    resultado.corrigido.sort((a, b) => new Date(b.resolvidoEm) - new Date(a.resolvidoEm));
-
-    // Salva
-    const saida = path.join(RAIZ, 'data', 'problemas.json');
-    fs.mkdirSync(path.dirname(saida), { recursive: true });
-    fs.writeFileSync(saida, JSON.stringify(resultado), 'utf8');
-
-    console.error('\n✅ problemas.json gerado!\n');
-    console.error(`📊 Resumo:`);
-    console.error(`   Abertos: ${resultado.aberto.length}`);
-    console.error(`   Em Correção: ${resultado.em_correcao.length}`);
-    console.error(`   Corrigidos: ${resultado.corrigido.length}`);
-    console.error(`   SDPREJ Impactados: ${resultado.sumario.totalChamadosSdprej}`);
-    console.error(`   Valor Total Impactado: R$ ${resultado.sumario.totalValorImpactado.toLocaleString('pt-BR')}\n`);
-
-  } catch (err) {
-    console.error('❌ Erro:', err.message);
-    process.exit(1);
+    if ((i + 1) % 10 === 0) console.error(`   ${i + 1}/${problemas.length}`);
   }
+
+  resultado.aberto.sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+  resultado.em_correcao.sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+  resultado.corrigido.sort((a, b) => new Date(b.resolvidoEm) - new Date(a.resolvidoEm));
+
+  console.error('\n✅ problemas.json gerado!\n');
+  console.error(`📊 Resumo:`);
+  console.error(`   Abertos: ${resultado.aberto.length}`);
+  console.error(`   Em Correção: ${resultado.em_correcao.length}`);
+  console.error(`   Corrigidos: ${resultado.corrigido.length}`);
+  console.error(`   SDPREJ Impactados: ${resultado.sumario.totalChamadosSdprej}`);
+  console.error(`   Valor Total Impactado: R$ ${resultado.sumario.totalValorImpactado.toLocaleString('pt-BR')}\n`);
+
+  return resultado;
 }
 
-main();
+module.exports = { montar };
