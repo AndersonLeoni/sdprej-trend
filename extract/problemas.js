@@ -36,26 +36,23 @@ async function buscarProblemas() {
   console.error('🔍 Buscando GDIS e SUST...');
 
   const jql = `(project = GDIS OR project = SUST) ORDER BY created DESC`;
-  let todos = [];
-  let startAt = 0;
 
-  while (true) {
-    console.error(`   Página ${Math.floor(startAt / 50) + 1}...`);
-    const res = await jira.search(jql, {
-      startAt,
-      maxResults: 50,
+  try {
+    const res = await jira.buscar(jql, ['summary', 'status', 'issuetype', 'priority', 'reporter', 'created', 'updated'], {
       expand: 'changelog'
     });
 
-    if (!res || !res.issues || res.issues.length === 0) break;
-    todos = todos.concat(res.issues);
+    if (!res || !res.issues) {
+      console.error('   ⚠️  Nenhum resultado retornado');
+      return [];
+    }
 
-    if (res.issues.length < 50) break;
-    startAt += 50;
+    console.error(`   ✅ ${res.issues.length} GDIS/SUST encontrados\n`);
+    return res.issues;
+  } catch (err) {
+    console.error(`   ❌ Erro ao buscar: ${err.message}`);
+    throw err;
   }
-
-  console.error(`   ✅ ${todos.length} GDIS/SUST encontrados\n`);
-  return todos;
 }
 
 /**
@@ -64,10 +61,7 @@ async function buscarProblemas() {
 async function buscarImpacto(gdisKey) {
   const jql = `project = SDPREJ AND issuelinks = "${gdisKey}"`;
   try {
-    const res = await jira.search(jql, {
-      maxResults: 500,
-      fields: ['customfield_11059', 'customfield_11048'] // Prejuízo Reversão e Inicial
-    });
+    const res = await jira.buscar(jql, ['customfield_11059', 'customfield_11048'], { maxResults: 500 });
 
     if (!res || !res.issues) return { chamados: [], valor: 0 };
 
