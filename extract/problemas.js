@@ -30,16 +30,22 @@ const mapStatus = (status) => {
 };
 
 /**
- * Busca GDIS/SUST com detalhes
+ * Busca GDIS/SUST com detalhes (ultimos 90 dias, limit 100)
  */
 async function buscarProblemas() {
-  console.error('🔍 Buscando GDIS e SUST...');
+  console.error('🔍 Buscando GDIS e SUST (últimos 90 dias)...');
 
-  const jql = `(project = GDIS OR project = SUST) ORDER BY created DESC`;
+  // Limita a últimos 90 dias pra ser mais eficiente
+  const dataLimite = new Date();
+  dataLimite.setDate(dataLimite.getDate() - 90);
+  const dataStr = dataLimite.toISOString().split('T')[0];
+
+  const jql = `(project = GDIS OR project = SUST) AND created >= ${dataStr} ORDER BY created DESC`;
 
   try {
     const res = await jira.buscar(jql, ['summary', 'status', 'issuetype', 'priority', 'reporter', 'created', 'updated'], {
-      expand: 'changelog'
+      expand: 'changelog',
+      maxResults: 100
     });
 
     if (!res || !res.issues) {
@@ -47,7 +53,7 @@ async function buscarProblemas() {
       return [];
     }
 
-    console.error(`   ✅ ${res.issues.length} GDIS/SUST encontrados\n`);
+    console.error(`   ✅ ${res.issues.length} GDIS/SUST encontrados (últimos 90 dias)\n`);
     return res.issues;
   } catch (err) {
     console.error(`   ❌ Erro ao buscar: ${err.message}`);
@@ -56,27 +62,40 @@ async function buscarProblemas() {
 }
 
 /**
- * Para cada GDIS/SUST, busca SDPREJ vinculados
+ * Busca impactos em batch (todos SDPREJ com vínculo GDIS/SUST)
  */
-async function buscarImpacto(gdisKey) {
-  const jql = `project = SDPREJ AND issuelinks = "${gdisKey}"`;
+async function buscarTodosImpactos() {
+  const jql = `project = SDPREJ AND issuetype = "Service Request" AND (summary ~ GDIS- OR summary ~ SUST-)`;
+
   try {
-    const res = await jira.buscar(jql, ['customfield_11059', 'customfield_11048'], { maxResults: 500 });
-
-    if (!res || !res.issues) return { chamados: [], valor: 0 };
-
-    let valor = 0;
-    res.issues.forEach(issue => {
-      const prejuizo = issue.fields['customfield_11059'] || issue.fields['customfield_11048'] || 0;
-      valor += (prejuizo || 0);
+    const res = await jira.buscar(jql, ['customfield_10973', 'customfield_11059', 'customfield_11048'], {
+      maxResults: 1000
     });
 
-    return {
-      chamados: res.issues.map(i => i.key),
-      valor: Math.round(valor)
-    };
+    if (!res || !res.issues) return {};
+
+    // Agrupa por chave GDIS/SUST
+    const impactos = {};
+    res.issues.forEach(issue => {
+      const gdisField = issue.fields['customfield_10973'] || '';
+      const gdisMatch = gdisField.match(/[GS]DIS-\d+/);
+
+      if (gdisMatch) {
+        const gdisKey = gdisMatch[0];
+        const prejuizo = issue.fields['customfield_11059'] || issue.fields['customfield_11048'] || 0;
+
+        if (!impactos[gdisKey]) {
+          impactos[gdisKey] = { chamados: [], valor: 0 };
+        }
+        impactos[gdisKey].chamados.push(issue.key);
+        impactos[gdisKey].valor += (prejuizo || 0);
+      }
+    });
+
+    return impactos;
   } catch (e) {
-    return { chamados: [], valor: 0 };
+    console.error('⚠️  Aviso: Erro ao buscar impactos:', e.message);
+    return {};
   }
 }
 
@@ -125,11 +144,14 @@ async function montar(cfg, agora) {
     }
   };
 
+  // Busca todos impactos uma única vez
+  const todosImpactos = await buscarTodosImpactos();
+
   for (let i = 0; i < problemas.length; i++) {
     const issue = problemas[i];
     const statusAtual = mapStatus(issue.fields.status?.name);
 
-    const impacto = await buscarImpacto(issue.key);
+    const impacto = todosImpactos[issue.key] || { chamados: [], valor: 0 };
     const datas = extrairDatas(issue);
 
     const registro = {
