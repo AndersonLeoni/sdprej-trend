@@ -9,6 +9,8 @@ on:
   # Também permite rodar manualmente
   workflow_dispatch:
 
+# Só os dois escopos que o job realmente usa: contents (push na gh-pages) e
+# pages (publicação). Nada de id-token ou outros escopos por padrão.
 permissions:
   contents: write
   pages: write
