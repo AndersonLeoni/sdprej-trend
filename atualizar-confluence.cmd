@@ -55,6 +55,15 @@ if %errorlevel% neq 0 (
 )
 
 echo.
+echo ✓ Passo 4b: Validando XHTML antes de enviar...
+node valida-xhtml.js confluence-content.html documentation-content.html relatorio-problemas.html
+if %errorlevel% neq 0 (
+    echo ❌ HTML invalido para o Confluence. Nada foi publicado.
+    pause
+    exit /b 1
+)
+
+echo.
 echo ✓ Passo 5: Publicando no Confluence...
 node publish-confluence.js
 if %errorlevel% neq 0 (

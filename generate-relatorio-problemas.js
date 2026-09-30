@@ -184,7 +184,7 @@ ${filaPrioridade.map(p => `<tr>
 <td style="color:${FL[p.fase].fg};font-weight:bold">${esc(FL[p.fase].lbl)}</td>
 <td>${esc(p.tema)}</td>
 <td style="text-align:right">${nfInt(p.qtd)}</td>
-<td style="text-align:right"${p.dias > 365 ? ' style="color:#c62828;font-weight:bold"' : ''}>${nfInt(p.dias)}d</td>
+<td style="text-align:right${p.dias > 365 ? ';color:#c62828;font-weight:bold' : ''}">${nfInt(p.dias)}d</td>
 <td style="text-align:right;color:#c62828;font-weight:bold">${nfBRL(p.valor)}</td>
 </tr>`).join('')}
 </tbody>
