@@ -44,6 +44,7 @@ jobs:
         run: |
           mkdir -p gh-pages
           cp dist/SDPREJ_Painel.html gh-pages/index.html
+          printf 'User-agent: *\nDisallow: /\n' > gh-pages/robots.txt
           echo "✅ Painel pronto para publicar"
 
       # 6. Faz upload pra branch gh-pages
