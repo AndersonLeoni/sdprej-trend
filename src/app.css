@@ -237,10 +237,3 @@ footer b{color:var(--text-secondary)}
   .hrow{grid-template-columns:minmax(96px,150px) 1fr auto}}
 @media print{.controls,.btn,.tabs,.viewnav{display:none}.card{break-inside:avoid}
   .conf{border:1px solid #999}}
-
-/* ==================== Visão 4: Relatório de Problemas ==================== */
-.kpi-big{font-size:32px;font-weight:bold;color:var(--series-1);margin:12px 0}
-.kpi-sub{font-size:14px;color:var(--text-secondary);margin:8px 0}
-#rel-abertos-count{color:#d03b3b}
-#rel-emcor-count{color:#fab219}
-#rel-corrigido-count{color:#0ca30c}

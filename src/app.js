@@ -943,11 +943,241 @@ const ViewGdis=(function(){
 })();
 
 
+/* ================== view: ciclo de correção do problema ==================
+ * Nenhuma consulta nova ao Jira: esta visão é uma reagregação de GI, que o
+ * bloco de GDIS já decodificou. O que muda é a UNIDADE — aqui a linha é o
+ * problema (um GDIS), não o chamado de prejuízo. Por isso os totais não
+ * fecham com as outras visões, e a tela diz isso.
+ */
+const RFASE=[
+  {c:'pen',lbl:'Aberto / pendente',               color:'var(--ord-1)',   fim:false},
+  {c:'n1', lbl:'Em correção · Nível 1',           color:'var(--ord-2)',   fim:false},
+  {c:'n2', lbl:'Em correção · Nível 2',           color:'var(--ord-3)',   fim:false},
+  {c:'n3', lbl:'Em correção · Nível 3',           color:'var(--ord-5)',   fim:false},
+  {c:'usr',lbl:'Aguardando validação do usuário', color:'var(--series-2)',fim:false},
+  {c:'fim',lbl:'Corrigido',                       color:'var(--good)',    fim:true},
+  {c:'nf', lbl:'GDIS não localizado',             color:'var(--neutral)', fim:false}
+];
+const RF=Object.fromEntries(RFASE.map(f=>[f.c,f]));
+const RBK={pen:'pen',n1:'n1',n2:'n2',n3:'n3',usr:'usr',res:'fim',can:'fim',des:'fim',nf:'nf'};
+const REMCOR=['n1','n2','n3'];
+
+/* um registro por GDIS distinto, agregando os SDPREJ presos a ele */
+const RI=(function(){
+  const m=new Map();
+  for(const o of GI){
+    if(!o.temG) continue;
+    let e=m.get(o.gdis);
+    if(!e){ e={gdis:o.gdis,gstat:o.gstat||'',bk:o.bk,fase:RBK[o.bk]||'nf',
+               keys:[],qtd:0,valor:0,dias:0,_t:new Map()}; m.set(o.gdis,e); }
+    e.keys.push(o.key); e.qtd++; e.valor+=o.valor;
+    if(o.dias>e.dias) e.dias=o.dias;          /* idade do SDPREJ mais antigo */
+    e._t.set(o.tema,(e._t.get(o.tema)||0)+1);
+  }
+  return [...m.values()].map(e=>{
+    e.tema=[...e._t.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'pt-BR'))[0][0];
+    delete e._t; return e;
+  });
+})();
+
+const ViewRel=(function(){
+  let metric='count', sortKey='valor', sortDir=-1, shown=100;
+  const TEMAS=[...new Set(RI.map(o=>o.tema))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const FASES_USADAS=RFASE.filter(f=>RI.some(o=>o.fase===f.c));
+  (function fill(){
+    const sf=document.getElementById('rFase');
+    FASES_USADAS.forEach(f=>{const o=document.createElement('option');
+      o.value=f.lbl;o.textContent=f.lbl;sf.appendChild(o);});
+    const st=document.getElementById('rTema');
+    TEMAS.forEach(v=>{const o=document.createElement('option');
+      o.value=v;o.textContent=v;st.appendChild(o);});
+  })();
+
+  const sum=(rs,f)=>rs.reduce((a,r)=>a+f(r),0);
+  const fmtM=v=>metric==='count'?nfInt.format(v):nfBRL.format(v);
+  const pc=(a,b)=>b?(a/b*100).toFixed(1).replace('.',','):'0';
+  const aberto=r=>!RF[r.fase].fim;
+
+  function current(){
+    const f=document.getElementById('rFase').value,
+          t=document.getElementById('rTema').value,
+          q=document.getElementById('rBusca').value.trim().toLowerCase();
+    return RI.filter(o=>{
+      if(f&&RF[o.fase].lbl!==f) return false;
+      if(t&&o.tema!==t) return false;
+      if(q&&!(o.gdis.toLowerCase().includes(q)||o.gstat.toLowerCase().includes(q)||
+              o.tema.toLowerCase().includes(q)||o.keys.some(k=>k.toLowerCase().includes(q)))) return false;
+      return true;
+    });
+  }
+
+  function kpis(rs){
+    const tot=rs.length;
+    const emCor=rs.filter(r=>REMCOR.includes(r.fase));
+    const n3=rs.filter(r=>r.fase==='n3');
+    const fim=rs.filter(r=>RF[r.fase].fim);
+    const abertos=rs.filter(aberto);
+    document.getElementById('r-kpis').innerHTML=`
+      <div class="tile"><div class="k">Problemas rastreados</div><div class="v">${nfInt.format(tot)}</div>
+        <div class="n">GDIS distintos com prejuízo vinculado</div></div>
+      <div class="tile"><div class="k">Já corrigidos</div><div class="v">${nfInt.format(fim.length)}</div>
+        <div class="n">${pc(fim.length,tot)}% do recorte · causa técnica tratada</div></div>
+      <div class="tile"><div class="k">Em correção</div><div class="v">${nfInt.format(emCor.length)}</div>
+        <div class="n">análise técnica em curso (N1/N2/N3)</div></div>
+      <div class="tile alert"><div class="k">No Nível 3</div><div class="v">${nfInt.format(n3.length)}</div>
+        <div class="n">topo do escalonamento · ${nfBRL.format(sum(n3,r=>r.valor))} presos</div></div>
+      <div class="tile alert"><div class="k">Prejuízo retido</div><div class="v">${nfBRL.format(sum(abertos,r=>r.valor))}</div>
+        <div class="n">${nfInt.format(sum(abertos,r=>r.qtd))} SDPREJ presos a problema não corrigido</div></div>
+      <div class="tile"><div class="k">Prejuízo destravado</div><div class="v">${nfBRL.format(sum(fim,r=>r.valor))}</div>
+        <div class="n">${nfInt.format(sum(fim,r=>r.qtd))} SDPREJ cujo problema já foi corrigido</div></div>`;
+  }
+
+  function funil(rs){
+    const rows=FASES_USADAS.map(f=>{
+      const g=rs.filter(r=>r.fase===f.c);
+      return {name:f.lbl,value:metric==='count'?g.length:sum(g,r=>r.valor),color:f.color,
+        tip:`<span>${nfInt.format(g.length)} problema${g.length===1?'':'s'}</span>`+
+            `<span>${nfInt.format(sum(g,r=>r.qtd))} SDPREJ vinculados</span>`+
+            `<span>R$ ${nfBRL2.format(sum(g,r=>r.valor))}</span>`};
+    });
+    hbarsInto('r-ch-funil',rows,{fmt:r=>fmtM(r.value)});
+    const fim=rs.filter(r=>RF[r.fase].fim).length;
+    const ab=rs.filter(aberto);
+    document.getElementById('r-cs-funil').innerHTML=rs.length
+      ? `<b>${pc(fim,rs.length)}%</b> dos problemas do recorte já foram corrigidos. Os ${nfInt.format(ab.length)} `+
+        `restantes seguram <b>R$ ${nfBRL2.format(sum(ab,r=>r.valor))}</b> em ${nfInt.format(sum(ab,r=>r.qtd))} chamados de prejuízo.`
+      : 'Sem problemas no recorte atual.';
+  }
+
+  function nivel(rs){
+    const rows=REMCOR.map(c=>{
+      const g=rs.filter(r=>r.fase===c);
+      return {name:RF[c].lbl.replace('Em correção · ',''),
+        value:metric==='count'?g.length:sum(g,r=>r.valor),color:RF[c].color,
+        tip:`<span>${nfInt.format(g.length)} problema${g.length===1?'':'s'}</span>`+
+            `<span>${nfInt.format(sum(g,r=>r.qtd))} SDPREJ</span>`+
+            `<span>R$ ${nfBRL2.format(sum(g,r=>r.valor))}</span>`};
+    });
+    hbarsInto('r-ch-niv',rows,{fmt:r=>fmtM(r.value)});
+    const n3=rs.filter(r=>r.fase==='n3');
+    const emCor=rs.filter(r=>REMCOR.includes(r.fase));
+    document.getElementById('r-note-niv').innerHTML=emCor.length
+      ? (n3.length
+          ? `O Nível 3 concentra <b>${nfInt.format(n3.length)}</b> de ${nfInt.format(emCor.length)} problemas em `+
+            `análise (${pc(n3.length,emCor.length)}%) e <b>R$ ${nfBRL2.format(sum(n3,r=>r.valor))}</b> em prejuízo. `+
+            `É o escalonamento mais alto — o que não se resolve nele não tem para onde subir.`
+          : `Nenhum problema no Nível 3 neste recorte: a análise em curso está toda em N1/N2.`)
+      : 'Nenhum problema em análise técnica neste recorte.';
+  }
+
+  function temaAberto(rs){
+    const m=new Map();
+    rs.filter(aberto).forEach(r=>{
+      const e=m.get(r.tema)||{n:0,v:0,q:0};
+      e.n++; e.v+=r.valor; e.q+=r.qtd; m.set(r.tema,e);
+    });
+    const rows=[...m.entries()]
+      .sort((a,b)=>metric==='count'?b[1].n-a[1].n:b[1].v-a[1].v).slice(0,8)
+      .map(([name,e],i)=>({name,value:metric==='count'?e.n:e.v,color:`var(${ORD[Math.min(i,4)]})`,
+        tip:`<span>${nfInt.format(e.n)} problema${e.n===1?'':'s'} em aberto</span>`+
+            `<span>${nfInt.format(e.q)} SDPREJ</span><span>R$ ${nfBRL2.format(e.v)}</span>`}));
+    hbarsInto('r-ch-tema',rows,{fmt:r=>fmtM(r.value)});
+  }
+
+  function prio(rs){
+    const ab=[...rs.filter(aberto)].sort((a,b)=>b.valor-a.valor).slice(0,12);
+    document.querySelector('#r-prio tbody').innerHTML=ab.length?ab.map(r=>`<tr>
+      <td><a href="${JIRA}${esc(r.gdis)}" target="_blank" rel="noopener">${esc(r.gdis)}</a></td>
+      <td><span class="gpill" title="${esc(r.gstat||'—')}"><i style="background:${RF[r.fase].color}"></i>${esc(RF[r.fase].lbl)}</span></td>
+      <td class="num">${nfInt.format(r.qtd)}</td>
+      <td class="num" style="font-weight:620">${nfBRL2.format(r.valor)}</td>
+      <td>${r.keys.slice(0,6).map(k=>`<a href="${JIRA}${esc(k)}" target="_blank" rel="noopener">${esc(k)}</a>`).join(', ')}${
+        r.keys.length>6?` <span style="color:var(--muted)">+${r.keys.length-6}</span>`:''}</td></tr>`).join('')
+      :'<tr><td colspan="5" class="empty">Nenhum problema em aberto no recorte atual.</td></tr>';
+    const tot=sum(rs.filter(aberto),r=>r.valor), top=sum(ab,r=>r.valor);
+    document.getElementById('r-note-prio').innerHTML=ab.length
+      ? `Os ${nfInt.format(ab.length)} problemas desta lista respondem por <b>${pc(top,tot)}%</b> de todo o `+
+        `prejuízo retido do recorte — corrigi-los primeiro destrava mais valor por unidade de esforço.`
+      : '';
+  }
+
+  function table(rs){
+    const ordem=r=>RFASE.findIndex(f=>f.c===r.fase);
+    const val=r=>sortKey==='gdis'?Number(r.gdis.split('-')[1])
+               :sortKey==='fase'?ordem(r)
+               :sortKey==='gstat'?r.gstat
+               :sortKey==='tema'?r.tema
+               :r[sortKey];
+    const sorted=[...rs].sort((a,b)=>{
+      const x=val(a),y=val(b);
+      return typeof x==='string'?sortDir*String(x).localeCompare(String(y),'pt-BR'):sortDir*(x-y);
+    });
+    const sl=sorted.slice(0,shown);
+    document.querySelector('#r-dt tbody').innerHTML=sl.length?sl.map(r=>`<tr>
+      <td><a href="${JIRA}${esc(r.gdis)}" target="_blank" rel="noopener">${esc(r.gdis)}</a></td>
+      <td style="color:var(--text-secondary)">${esc(r.gstat||'—')}</td>
+      <td><span class="gpill" title="${esc(RF[r.fase].lbl)}"><i style="background:${RF[r.fase].color}"></i>${esc(RF[r.fase].lbl)}</span></td>
+      <td><span class="pill">${esc(r.tema)}</span></td>
+      <td class="num">${nfInt.format(r.qtd)}</td>
+      <td class="num ${r.dias>365?'age-hi':''}">${nfInt.format(r.dias)}</td>
+      <td class="num" style="font-weight:620">${nfBRL2.format(r.valor)}</td></tr>`).join('')
+      :'<tr><td colspan="7" class="empty">Sem problemas no recorte atual.</td></tr>';
+    document.getElementById('r-count').textContent=
+      `Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rs.length)} problemas · `+
+      `${nfInt.format(sum(rs,r=>r.qtd))} SDPREJ vinculados · soma do recorte R$ ${nfBRL2.format(sum(rs,r=>r.valor))}`;
+    document.getElementById('r-more').style.display=sl.length<rs.length?'':'none';
+    document.querySelectorAll('#r-dt th').forEach(th=>{
+      const a=th.querySelector('.ar'); if(!a) return;
+      a.textContent=th.dataset.s===sortKey?(sortDir>0?'▲':'▼'):'↕';
+      a.style.opacity=th.dataset.s===sortKey?1:.45;
+    });
+  }
+
+  function render(){
+    const rs=current();
+    kpis(rs); funil(rs); nivel(rs); temaAberto(rs); prio(rs); table(rs);
+  }
+
+  ['rFase','rTema'].forEach(id=>document.getElementById(id)
+    .addEventListener('change',()=>{shown=100;render();}));
+  let deb; document.getElementById('rBusca').addEventListener('input',()=>{
+    clearTimeout(deb); deb=setTimeout(()=>{shown=100;render();},180);});
+  document.getElementById('r-clear').addEventListener('click',()=>{
+    ['rFase','rTema'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('rBusca').value=''; shown=100; render();});
+  document.getElementById('rMetric').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-m]'); if(!b) return;
+    metric=b.dataset.m;
+    document.querySelectorAll('#rMetric button').forEach(x=>
+      x.setAttribute('aria-pressed',String(x===b)));
+    render();});
+  document.querySelectorAll('#r-dt th').forEach(th=>th.addEventListener('click',()=>{
+    const k=th.dataset.s; if(!k) return;
+    if(k===sortKey) sortDir*=-1;
+    else {sortKey=k; sortDir=(k==='valor'||k==='dias'||k==='qtd')?-1:1;}
+    render();}));
+  document.getElementById('r-more').addEventListener('click',()=>{shown+=100;render();});
+  document.getElementById('r-csv').addEventListener('click',()=>{
+    const rs=current();
+    const head=['Problema','Status no Jira','Fase','Tema predominante','SDPREJ vinculados',
+                'Qtd SDPREJ','Dias do SDPREJ mais antigo','Prejuizo R$'];
+    const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    const csv='﻿'+[head.join(';'),...rs.map(r=>[r.gdis,r.gstat,RF[r.fase].lbl,r.tema,
+        r.keys.join(' '),r.qtd,r.dias,String(r.valor).replace('.',',')].map(q).join(';'))].join('\r\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    a.download='sdprej-ciclo-correcao-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();});
+
+  return {render};
+})();
+
+
 /* ===================== view switching ===================== */
 let currentView='temas';
 const VIEWS={temas:{sec:'view-temas',tab:'tab-temas',ger:()=>DT.geradoEm,r:()=>ViewTemas.render()},
              gdis :{sec:'view-gdis', tab:'tab-gdis', ger:()=>GD.geradoEm,r:()=>ViewGdis.render()},
-             ana  :{sec:'view-ana',  tab:'tab-ana',  ger:()=>DA.geradoEm,r:()=>ViewAna.render()}};
+             ana  :{sec:'view-ana',  tab:'tab-ana',  ger:()=>DA.geradoEm,r:()=>ViewAna.render()},
+             rel  :{sec:'view-rel',  tab:'tab-rel',  ger:()=>GD.geradoEm,r:()=>ViewRel.render()}};
 function show(v){
   currentView=v;
   for(const k in VIEWS){

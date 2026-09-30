@@ -9,6 +9,14 @@
 data/
 dist/
 
+# HTML gerado para o Confluence: carrega o MESMO dado dos payloads (chave de
+# chamado, valor de prejuizo, nome de colaborador). E saida de build, e
+# regerado por generate-*.js a cada rodada — nao ha motivo para versionar.
+confluence-content.html
+confluence-piloto.html
+documentation-content.html
+relatorio-problemas.html
+
 # credenciais
 config.json
 .env

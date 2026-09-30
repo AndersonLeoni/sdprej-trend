@@ -1,195 +1,116 @@
-# 📋 Visão 4 — Relatório de Problemas (Pós-Férias)
+# Visão 4 — Ciclo de correção do problema
 
-**Status:** 🔄 Em Progresso (50% — Dados + Template + Esboço JS)
-
-**Data de Conclusão Estimada:** Segundo dia útil pós-férias (02/10/2026)
+**Status:** ✅ IMPLEMENTADA (29/09/2026)
 
 ---
 
-## ✅ O QUE JÁ ESTÁ PRONTO
+## O que ela responde
 
-### Dados (100%)
-- ✅ `extract/problemas.js` — Extrai GDIS/SUST do Jira
-- ✅ `data/problemas.json` — Armazena de → para, status, impacto
+A pergunta do "de → para": cada chamado de TI (GDIS) que originou prejuízo está em que fase, e
+quanto prejuízo aquela fase ainda segura.
 
-### Publicação (100%)
-- ✅ `generate-relatorio-problemas.js` — Gera tabelas HTML pra Confluence
-- ✅ `atualizar-confluence.cmd` — Integrado no fluxo (Passo 2b)
-- ✅ Tabelas no Confluence com KPIs e resumos
+A unidade é o **problema** (um GDIS), não o chamado de prejuízo. Um problema pode responder por
+vários SDPREJ — por isso os totais desta visão não fecham com os das outras três, e a tela diz isso.
 
-### Template (100%)
-- ✅ `src/template.html` — Aba 4 criada com estrutura HTML
-- ✅ 4 cards KPI (Aberto, Em Correção, Corrigido, Total)
-- ✅ 3 tabelas (uma por status)
-- ✅ Filtros básicos (Status, Prioridade)
+### Números da extração de 29/09/2026
 
-### Estilos (100%)
-- ✅ `src/app.css` — Estilos para KPIs e cards da Visão 4
+| Fase | Problemas |
+|---|---|
+| Aberto / pendente | 6 |
+| Em correção · Nível 1 | 93 |
+| Em correção · Nível 2 | 3 |
+| Em correção · Nível 3 | 17 |
+| Aguardando validação do usuário | 13 |
+| Corrigido | 1.050 |
+| GDIS não localizado | 1 |
+| **Total rastreado** | **1.183** |
 
-### Lógica JavaScript (15% — Esboço)
-- ⚠️ `src/app-relatorio-sketch.js` — Estrutura e TODOs
-- ✅ Funções `renderRelatorioKPIs()` e `renderRelatorioTabelas()`
-- ⚠️ Filtros (não implementado)
-- ⚠️ Ordenação por coluna (não implementado)
+- **88,8% dos problemas já foram corrigidos**
+- Prejuízo destravado (problema corrigido): **R$ 2.856.283**
+- Prejuízo retido (problema em aberto): **R$ 256.241** em 207 chamados
+- O Nível 3 concentra 17 problemas e R$ 25.573 — é o gargalo
 
----
-
-## ⚠️ O QUE FALTA (Pós-Férias)
-
-### 1. Integrar Lógica JavaScript (30 min)
-
-**Arquivo:** `src/app.js`
-
-**O que fazer:**
-1. Adicionar listener de aba (clique em "📋 Relatório de Problemas")
-2. Chamar `initRelatorio()` quando aba for ativada
-3. Integrar funções do `app-relatorio-sketch.js`
-
-**Dica:** Copiar padrão de outras abas (fTemas, fGdis, fAna)
-
-```javascript
-// No final de app.js, adicionar:
-document.getElementById('tab-rel').addEventListener('click', () => {
-  // Mostrar Visão 4
-  // Chamar initRelatorio()
-});
-```
-
-### 2. Implementar Filtros (45 min)
-
-**Filtros a implementar:**
-- `#fRelStatus` — Filtrar por status (aberto, em_correcao, corrigido)
-- `#fRelPrio` — Filtrar por prioridade (high, medium, low)
-- `#rel-clear` — Limpar filtros
-
-**Padrão a reutilizar:** Procurar em `app.js` a função que implementa filtros em `fTema`, `fArea`, etc.
-
-**Pseudocódigo:**
-```javascript
-document.getElementById('fRelStatus').addEventListener('change', (e) => {
-  const status = e.target.value;
-  // Filtrar PR[status] ou PRfilter
-  // Re-renderizar tabelas
-});
-```
-
-### 3. Implementar Ordenação de Colunas (45 min)
-
-**O que fazer:**
-- Cliques em `<th data-s="...">` devem ordenar a coluna
-- Indicador de seta (↕) deve girar
-- Suportar: chave, tipo, prioridade, dias, valor, etc.
-
-**Padrão a reutilizar:** Procurar em `app.js` a função `sortTable()` ou similar do GDIS.
-
-### 4. Testes e Refinamento (30 min)
-
-**Checklist:**
-- ✅ Aba aparece e fica oculta corretamente
-- ✅ KPIs mostram valores certos
-- ✅ Tabelas preenchem com dados
-- ✅ Filtros funcionam
-- ✅ Ordenação funciona
-- ✅ Links para Jira abrem
-- ✅ Design responsivo (mobile)
-- ✅ Dark mode funciona
+Os dois valores somam R$ 3.112.524, que é o total do universo. Conferido.
 
 ---
 
-## 📂 Arquivos Relevantes
+## Decisão de projeto que importa: zero consulta nova ao Jira
 
-```
-src/
-  ├── template.html          ← Aba 4 criada (copiar padrão de outras abas)
-  ├── app.css                ← Estilos KPI (copiar padrão de .card)
-  ├── app.js                 ← INTEGRAR app-relatorio-sketch.js aqui
-  └── app-relatorio-sketch.js ← Esboço (funções prontas)
+A primeira tentativa criou um `extract/problemas.js` que varria os projetos GDIS e SUST e, para cada
+problema, fazia outra consulta buscando os SDPREJ vinculados. Isso estourou o limite de paginação do
+`jira.buscar` (200 chamadas) e travou a rotina.
 
-extract/
-  └── problemas.js           ← Extração (pronto)
+**O erro era de premissa.** O payload `GD`, que a visão "Vínculo com GDIS" já usa, contém:
 
-generate-relatorio-problemas.js ← Tabelas Confluence (pronto)
-```
+- a chave do GDIS (`rows[i][5]`)
+- o **status real** daquele GDIS, lido no próprio Jira na extração (`rows[i][7]` → `gsts`)
+- o balde já classificado (`rows[i][6]`)
+- o valor e a idade de cada SDPREJ
 
----
+Ou seja: o dado do "de → para" já estava extraído. A Visão 4 é uma **reagregação de `GI`** em memória,
+agrupando por GDIS em vez de por chamado. Custo: zero chamadas, zero segundos.
 
-## 🎯 Checklist Pós-Férias
+`extract/problemas.js` foi removido. Não recriar.
 
-- [ ] Segunda de manhã: Integrar `app-relatorio-sketch.js` em `app.js`
-- [ ] Implementar filtros de status e prioridade
-- [ ] Implementar ordenação por coluna
-- [ ] Testar no browser (dev tools)
-- [ ] Verificar responsividade
-- [ ] Verificar dark mode
-- [ ] Rodar `node build.js` e verificar painel
-- [ ] Commit e push final
-- [ ] Demonstrar ao gerente (antes do 10/10)
+### Sobre SUST
 
----
+Verificado nos dados: **zero chaves SUST** no campo `nº ocorrência` dos 1.513 chamados. O balde de
+"chave de outro projeto" tem 6 registros, e são `CNT-`, `SDTTI-` e `DIS-`. Na prática o vínculo é só
+GDIS, então não houve necessidade de alargar o padrão `GDIS-nnnn`.
 
-## 💡 Dicas para Terminar
-
-### Dica 1: Copie o Padrão de Outras Abas
-Procure em `app.js` por `fTemas` ou `fGdis` — o padrão de filtros é exatamente o mesmo que você precisa para Visão 4.
-
-### Dica 2: Reutilize Funções de Formatação
-Todas essas já existem em `app.js`:
-- `nfInt()` — formatar números
-- `nfBRL()` — formatar moeda
-- `esc()` — escapar HTML
-- `sortTable()` — ordenar tabelas
-
-### Dica 3: Estrutura de Dados
-`PR` já vem com a estrutura:
-```javascript
-PR = {
-  aberto: [...],           // Array de problemas
-  em_correcao: [...],      // Array
-  corrigido: [...],        // Array
-  sumario: {
-    totalChamadosSdprej: 123,
-    totalValorImpactado: 1000000
-  }
-}
-```
-
-### Dica 4: Teste Incremental
-1. Primeiro: Fazer aparecer a aba
-2. Depois: Mostrar KPIs
-3. Depois: Preencher tabelas
-4. Depois: Filtros
-5. Depois: Ordenação
-
-Não tente fazer tudo de uma vez!
+Se SUST passar a aparecer, o ajuste é em `extract/derive.js`: trocar `RE_GDIS` por
+`/^(GDIS|SUST)-\d+$/`. Isso muda os números da visão de GDIS também, porque esses registros saem de
+"Sem vínculo rastreável".
 
 ---
 
-## 📞 Referências
+## Arquivos
 
-- **Padrão de Filtros:** Procure `fTema` em `app.js` (≈ linha 800+)
-- **Padrão de Abas:** Procure `tab-temas` em `app.js` (≈ linha 100+)
-- **Padrão de Tabelas:** Procure `g-table` em `app.js` (≈ linha 1200+)
-- **Estilos:** Procure `.card` em `app.css` (≈ linha 100+)
-
----
-
-## 🎉 Quando Terminar
-
-Você terá uma **Visão 4 completa e interativa** no painel com:
-- ✅ 4 status visuais (Abertos | Em Correção | Corrigidos | Total)
-- ✅ Filtros funcionais
-- ✅ Ordenação de colunas
-- ✅ Links para Jira
-- ✅ Design responsivo
-- ✅ Dark mode
-
-**Próximas evoluções (pós 10/10):**
-- Timeline visual (gráfico de evolução)
-- Print por problema
-- Export CSV
-- Comparativo mês a mês
-- App Forge (dado ao vivo)
+| Arquivo | Papel |
+|---|---|
+| `src/template.html` | aba `tab-rel` + seção `view-rel` |
+| `src/app.js` | `RFASE`, `RI` (reagregação) e o módulo `ViewRel` |
+| `generate-relatorio-problemas.js` | tabelas do relatório para o Confluence, lendo `data/gdis.json` |
+| `publish-relatorio.js` | publica a página "SDPREJ — Ciclo de Correção do Problema" |
+| `atualizar-confluence.cmd` | passos 3b (gerar) e 7 (publicar) |
 
 ---
 
-**Bom descanso! Vemos na volta!** 🏖️🚀
+## O que a visão tem
+
+- **6 KPIs:** problemas rastreados, já corrigidos, em correção, no Nível 3, prejuízo retido,
+  prejuízo destravado
+- **Funil das fases** na ordem real do fluxo, alternável entre contagem e valor
+- **Escalonamento em curso** (N1/N2/N3) com nota sobre o peso do Nível 3
+- **Temas com problema ainda aberto**
+- **Fila de correção por prioridade de valor** — os 12 problemas que seguram mais prejuízo, com os
+  SDPREJ vinculados clicáveis. É a lista acionável: corrigir o topo destrava mais valor
+- **Tabela completa** ordenável por qualquer coluna, com CSV
+- **Filtros:** fase, tema predominante, busca livre
+
+---
+
+## Verificação feita
+
+Renderizado em Chrome headless com os dados reais, conferindo o DOM resultante:
+
+- 6 KPIs com os números corretos
+- 18 barras nos três gráficos (7 + 3 + 8)
+- 112 linhas de tabela preenchidas
+- 21 opções de filtro populadas
+- Rodapé: "Exibindo 100 de 1.183 problemas · 1.399 SDPREJ vinculados · soma R$ 3.112.524,80"
+- Nenhum `undefined` ou `NaN` no conteúdo
+- `node --check` limpo em `app.js`
+- Acentuação correta no arquivo compilado, sem BOM
+
+---
+
+## Próximos passos (não bloqueiam nada)
+
+1. **Botão de imprimir por gráfico** — o pedido original de print. O CSS já tem uma regra
+   `@media print` que esconde controles; falta o botão por card e o isolamento do card na impressão.
+2. **Histórico do ciclo** — hoje a visão é uma fotografia. Guardar a contagem por fase a cada
+   extração permitiria mostrar a curva de correção ao longo do tempo. Exige persistir um
+   `data/historico.json` acumulado (e decidir onde ele vive, já que `data/` não é versionado).
+3. **Tempo de permanência por fase** — o changelog do GDIS diria quanto tempo cada problema passou
+   em cada nível. Custa uma extração de changelog nova (~40 s), então só vale se a pergunta aparecer.

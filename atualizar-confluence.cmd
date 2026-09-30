@@ -37,6 +37,15 @@ if %errorlevel% neq 0 (
 )
 
 echo.
+echo ✓ Passo 3b: Gerando relatório do ciclo de correção...
+node generate-relatorio-problemas.js
+if %errorlevel% neq 0 (
+    echo ❌ Erro ao gerar relatório do ciclo de correção. Abortando.
+    pause
+    exit /b 1
+)
+
+echo.
 echo ✓ Passo 4: Gerando documentação...
 node generate-documentation-page.js
 if %errorlevel% neq 0 (
@@ -64,7 +73,16 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo ✓ Passo 7: Criando página do painel...
+echo ✓ Passo 7: Publicando relatório do ciclo de correção...
+node publish-relatorio.js
+if %errorlevel% neq 0 (
+    echo ❌ Erro ao publicar relatório do ciclo de correção. Abortando.
+    pause
+    exit /b 1
+)
+
+echo.
+echo ✓ Passo 8: Criando página do painel...
 node create-painel-page.js
 if %errorlevel% neq 0 (
     echo ❌ Erro ao criar página. Abortando.
@@ -77,7 +95,7 @@ echo ===========================================================================
 echo  ✅ SUCESSO! Confluence atualizado com dados mais recentes
 echo ================================================================================
 echo.
-echo 🌐 Acesse: https://seu-confluence/wiki/spaces/...
-echo 🕐 Próxima atualização automática: amanhã às 8:00 (GitHub Pages)
+echo 🌐 Painel: https://AndersonLeoni.github.io/sdprej-trend/
+echo 🕐 Próxima atualização automática do painel: seg-sex às 8:00 (GitHub Actions)
 echo.
 pause

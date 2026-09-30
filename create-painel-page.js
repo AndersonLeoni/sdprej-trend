@@ -107,8 +107,9 @@ function httpsRequest(method, url, body) {
 <h2>📊 Visões Disponíveis</h2>
 <ul>
 <li><strong>Temas:</strong> Classificação por padrão derivado, área, fornecedor, aging e valor mensal</li>
+<li><strong>Vínculo com GDIS:</strong> Rastreamento de incidentes, vínculo com chamados, escalação e status</li>
 <li><strong>Analistas:</strong> Timeline de ciclos, ritmo de análise, fila de espera por faixa de dias</li>
-<li><strong>GDIS:</strong> Rastreamento de incidentes, vínculo com chamados, escalação e status</li>
+<li><strong>Ciclo de correção:</strong> De aberto a corrigido — em que fase está cada problema de TI que originou prejuízo, quanto prejuízo cada fase ainda segura, e a fila de correção por prioridade de valor</li>
 </ul>
 
 <h2>🔄 Atualização Automática</h2>

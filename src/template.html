@@ -23,6 +23,7 @@
     <button type="button" role="tab" id="tab-temas" aria-selected="true" aria-controls="view-temas">Visão geral por tema</button>
     <button type="button" role="tab" id="tab-gdis" aria-selected="false" aria-controls="view-gdis">Vínculo com GDIS</button>
     <button type="button" role="tab" id="tab-ana" aria-selected="false" aria-controls="view-ana">Por analista</button>
+    <button type="button" role="tab" id="tab-rel" aria-selected="false" aria-controls="view-rel">Ciclo de correção</button>
   </div>
   <div class="sp"></div>
   <span class="chip" id="chipGer"></span>
@@ -405,104 +406,113 @@
 </footer>
 </section>
 
-<!-- ============================ VIEW 4: RELATÓRIO ============================ -->
+<!-- ==================== VIEW: CICLO DE CORREÇÃO ==================== -->
 <section id="view-rel" role="tabpanel" aria-labelledby="tab-rel" hidden>
 
 <div class="hdr">
-  <h1>📋 Relatório — GDIS/SUST e Impacto em SDPREJ</h1>
+  <h1>Ciclo de correção do problema</h1>
   <div class="lead">
-    Rastreamento de problemas identificados (GDIS e SUST) e sua correlação com chamados de prejuízo. Agrupa por status: aberto, em correção (nível 3), e corrigido.
+    De <b>aberto</b> a <b>corrigido</b>: em que fase está cada chamado de TI que originou prejuízo, e quanto
+    prejuízo cada fase ainda segura. A unidade desta visão é o <b>problema</b> (um GDIS), não o chamado de
+    prejuízo — um mesmo problema pode responder por vários SDPREJ, então os totais aqui não fecham com os das
+    outras visões de propósito.
   </div>
 </div>
 
-<div class="controls" role="group" aria-label="Filtros do relatório de problemas">
-  <div><label for="fRelStatus">Status</label><select id="fRelStatus">
-    <option value="">Todos</option>
-    <option value="aberto">🔴 Abertos</option>
-    <option value="em_correcao">🟡 Em Correção</option>
-    <option value="corrigido">✅ Corrigidos</option>
-  </select></div>
-  <div><label for="fRelPrio">Prioridade</label><select id="fRelPrio">
-    <option value="">Todas</option>
-  </select></div>
+<div class="controls" role="group" aria-label="Filtros do ciclo de correção">
+  <div><label for="rFase">Fase</label><select id="rFase"><option value="">Todas</option></select></div>
+  <div><label for="rTema">Tema predominante</label><select id="rTema"><option value="">Todos</option></select></div>
+  <div><label for="rBusca">Busca</label><input type="search" id="rBusca" placeholder="GDIS, SDPREJ, status…"></div>
+  <div><label for="rMetric">Medida dos gráficos</label>
+    <div class="seg" id="rMetric">
+      <button type="button" data-m="count" aria-pressed="true">Problemas</button>
+      <button type="button" data-m="valor" aria-pressed="false">Valor R$</button>
+    </div>
+  </div>
   <div class="sp"></div>
-  <div><button class="btn" id="rel-clear">Limpar filtros</button></div>
+  <div><button class="btn" id="r-clear">Limpar filtros</button></div>
 </div>
 
-<!-- KPIs de Status -->
-<div class="grid">
-  <section class="card">
-    <h2>🔴 Abertos</h2>
-    <div class="kpi-big" id="rel-abertos-count">0</div>
-    <div class="kpi-sub" id="rel-abertos-valor">R$ 0</div>
-  </section>
-  <section class="card">
-    <h2>🟡 Em Correção</h2>
-    <div class="kpi-big" id="rel-emcor-count">0</div>
-    <div class="kpi-sub" id="rel-emcor-valor">R$ 0</div>
-  </section>
-  <section class="card">
-    <h2>✅ Corrigidos</h2>
-    <div class="kpi-big" id="rel-corrigido-count">0</div>
-    <div class="kpi-sub" id="rel-corrigido-valor">R$ 0</div>
-  </section>
-  <section class="card">
-    <h2>📊 SDPREJ Impactados</h2>
-    <div class="kpi-big" id="rel-total-sdprej">0</div>
-    <div class="kpi-sub" id="rel-total-valor">R$ 0</div>
-  </section>
-</div>
+<div class="kpis" id="r-kpis"></div>
 
-<!-- Tabelas por Status -->
 <div class="grid">
   <section class="card wide">
-    <h2>🔴 Problemas Abertos</h2>
-    <div class="tbl">
-      <table class="dt" id="rel-table-abertos">
-        <thead><tr>
-          <th data-s="chave">Chave</th>
-          <th data-s="tipo">Tipo</th>
-          <th data-s="prioridade">Prioridade</th>
-          <th style="text-align:right">SDPREJ</th>
-          <th style="text-align:right">Valor R$</th>
-          <th style="text-align:right">Dias</th>
-        </tr></thead><tbody></tbody>
-      </table>
-    </div>
-    <div class="note" id="rel-note-abertos">Nenhum problema aberto.</div>
+    <h2>De aberto a corrigido &middot; fases do problema</h2>
+    <div class="cs" id="r-cs-funil"></div>
+    <div class="hbars" id="r-ch-funil"></div>
+    <div class="note">As fases aparecem na ordem real do fluxo, de cima para baixo. Cada barra é um conjunto de
+      problemas distintos, não de chamados de prejuízo.</div>
+  </section>
+
+  <section class="card">
+    <h2>Escalonamento em curso</h2>
+    <div class="cs">Só os problemas ainda em análise técnica. O Nível 3 é o topo do escalonamento.</div>
+    <div class="hbars" id="r-ch-niv"></div>
+    <div class="note" id="r-note-niv"></div>
+  </section>
+
+  <section class="card">
+    <h2>Temas com problema ainda aberto</h2>
+    <div class="cs">Onde a causa técnica continua sem correção, pela natureza do incidente.</div>
+    <div class="hbars" id="r-ch-tema"></div>
   </section>
 
   <section class="card wide">
-    <h2>🟡 Em Correção (Nível 3)</h2>
-    <div class="tbl">
-      <table class="dt" id="rel-table-emcor">
-        <thead><tr>
-          <th data-s="chave">Chave</th>
-          <th data-s="summary">Descrição</th>
-          <th style="text-align:right">SDPREJ</th>
-          <th style="text-align:right">Valor R$</th>
-        </tr></thead><tbody></tbody>
-      </table>
-    </div>
-    <div class="note" id="rel-note-emcor">Nenhum problema em correção.</div>
-  </section>
-
-  <section class="card wide">
-    <h2>✅ Corrigidos</h2>
+    <h2>Fila de correção por prioridade de valor</h2>
+    <div class="cs">Problemas <b>ainda não corrigidos</b>, do que segura mais prejuízo para o que segura menos.
+      O topo desta lista é onde a correção devolve mais valor.</div>
     <div class="tbl sm">
-      <table class="dt" id="rel-table-corrigido">
+      <table class="dt" id="r-prio">
         <thead><tr>
-          <th data-s="chave">Chave</th>
-          <th data-s="resolvidoEm">Resolvido em</th>
+          <th>Problema</th><th>Fase</th>
           <th style="text-align:right">SDPREJ</th>
-          <th style="text-align:right">Valor R$</th>
+          <th style="text-align:right">Prejuízo retido R$</th>
+          <th>SDPREJ vinculados</th>
         </tr></thead><tbody></tbody>
       </table>
     </div>
-    <div class="note" id="rel-note-corrigido">Nenhum problema corrigido.</div>
+    <div class="note" id="r-note-prio"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Problemas e sua fase atual</h2>
+    <div class="cs">Um problema por linha. Clique no cabeçalho para ordenar, nas chaves para abrir no Jira.</div>
+    <div class="tbl">
+      <table class="dt" id="r-dt">
+        <thead><tr>
+          <th data-s="gdis">Problema<span class="ar">↕</span></th>
+          <th data-s="gstat">Status no Jira<span class="ar">↕</span></th>
+          <th data-s="fase">Fase<span class="ar">↕</span></th>
+          <th data-s="tema">Tema predominante<span class="ar">↕</span></th>
+          <th data-s="qtd">SDPREJ<span class="ar">↕</span></th>
+          <th data-s="dias">Dias<span class="ar">↕</span></th>
+          <th data-s="valor">Prejuízo R$<span class="ar">↕</span></th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="tfoot">
+      <span id="r-count"></span>
+      <span><button class="btn" id="r-more">Mostrar mais 100</button>
+        <button class="btn" id="r-csv">Baixar CSV</button></span>
+    </div>
   </section>
 </div>
 
+<footer>
+  Fonte: o mesmo payload da visão <b>Vínculo com GDIS</b> — nenhuma consulta adicional ao Jira. O status de cada
+  problema é lido no próprio GDIS no momento da extração, e as fases vêm desse status:
+  <em>Aberto / pendente</em> = Aberto, Pendente, A Concluir &middot;
+  <em>Em correção</em> = Em análise Nível 1, 2 ou 3 &middot;
+  <em>Aguardando validação do usuário</em> fica separado porque a bola está com o solicitante, não com a TI &middot;
+  <em>Corrigido</em> = Fechado, Resolvido, Cancelado.<br>
+  <b>Dias</b> é a idade do SDPREJ mais antigo preso ao problema — mede há quanto tempo aquele problema produz
+  prejuízo em aberto, não o tempo de análise do GDIS.<br>
+  <b>Prejuízo retido</b> soma os SDPREJ vinculados a problema não corrigido. Corrigir a causa não fecha o chamado de
+  prejuízo sozinho, mas remove o impedimento técnico que o mantém parado.<br>
+  <b>Limite conhecido:</b> o vínculo vem do campo de texto livre <b>nº ocorrência</b>, então problema referenciado
+  fora do padrão <code>GDIS-nnnn</code> não entra nesta contagem. Chaves de outros projetos e texto livre aparecem
+  como <em>Sem vínculo rastreável</em> na visão de GDIS.
+</footer>
 </section>
 
 </div>
