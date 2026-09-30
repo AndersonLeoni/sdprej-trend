@@ -25,6 +25,54 @@ const esc = s => String(s || '').replace(/[&<>"]/g, c => ({
 }[c]));
 
 const filaTotal = DA.fila.reduce((s, f) => s + f.valor, 0);
+const pcn = (a, b) => b ? (a / b * 100).toFixed(1).replace('.', ',') : '0';
+
+/* ---- ciclo de correção: reagrega GD por PROBLEMA (um GDIS) --------------
+   Mesma lógica da quarta visão do painel. Nenhuma consulta nova: o status
+   real de cada GDIS já vem no payload. */
+const FASE_LBL = {
+  pen: 'Aberto / pendente', n1: 'Em correção · Nível 1', n2: 'Em correção · Nível 2',
+  n3: 'Em correção · Nível 3', usr: 'Aguardando validação do usuário',
+  fim: 'Corrigido', nf: 'GDIS não localizado',
+};
+const FASE_ORDEM = ['pen', 'n1', 'n2', 'n3', 'usr', 'fim', 'nf'];
+const FASE_COR = {
+  pen: '#e65100', n1: '#1565c0', n2: '#1565c0', n3: '#c62828',
+  usr: '#e65100', fim: '#2e7d32', nf: '#666',
+};
+const DE_BALDE = { pen: 'pen', n1: 'n1', n2: 'n2', n3: 'n3', usr: 'usr', res: 'fim', can: 'fim', des: 'fim', nf: 'nf' };
+
+const problemas = (() => {
+  const m = new Map();
+  for (const r of GD.rows) {
+    const chave = String(r[5] || '').trim();
+    if (!/^GDIS-\d+$/.test(chave)) continue;
+    let e = m.get(chave);
+    if (!e) {
+      e = { gdis: chave, gstat: r[7] >= 0 ? GD.gsts[r[7]] : '', fase: DE_BALDE[r[6]] || 'nf',
+            keys: [], qtd: 0, valor: 0, dias: 0, _t: new Map() };
+      m.set(chave, e);
+    }
+    e.keys.push('SDPREJ-' + r[0]);
+    e.qtd++; e.valor += r[3];
+    if (r[4] > e.dias) e.dias = r[4];
+    const t = GD.temas[r[2]];
+    e._t.set(t, (e._t.get(t) || 0) + 1);
+  }
+  return [...m.values()].map(e => {
+    e.tema = [...e._t.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))[0][0];
+    delete e._t;
+    return e;
+  });
+})();
+
+const probTotal = problemas.length;
+const probCorrigidos = problemas.filter(p => p.fase === 'fim');
+const probAbertos = problemas.filter(p => p.fase !== 'fim');
+const probEmCorrecao = problemas.filter(p => ['n1', 'n2', 'n3'].includes(p.fase));
+const probN3 = problemas.filter(p => p.fase === 'n3');
+const valorRetido = probAbertos.reduce((s, p) => s + p.valor, 0);
+const valorDestravado = probCorrigidos.reduce((s, p) => s + p.valor, 0);
 
 let html = `<p><strong>📊 SDPREJ — Dashboard de Prejuízos</strong></p>
 <p style="font-size: 12px; color: #666;">Trend Operadora — Gestão Centralizada de Reclamações e Análise de Risco | 📅 ${new Date().toLocaleString('pt-BR')} | 🔄 Atualização Automática: Diária</p>
@@ -80,7 +128,7 @@ let html = `<p><strong>📊 SDPREJ — Dashboard de Prejuízos</strong></p>
 <p style="margin: 12px 0 0 0;">
 <a href="${PAINEL_URL}" target="_blank" style="display: inline-block; background: #003366; color: white; padding: 10px 20px; border-radius: 4px; font-weight: bold; font-size: 14px; text-decoration: none;">→ ABRIR PAINEL INTERATIVO</a>
 </p>
-<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Navegação: Temas • Analistas • GDIS | Filtros • Gráficos • Dados ao vivo</p>
+<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Quatro visões: Temas • Vínculo com GDIS • Por analista • <strong>Ciclo de correção</strong> | Filtros • Gráficos • CSV</p>
 </ac:rich-text-body>
 </ac:structured-macro>
 
@@ -228,11 +276,104 @@ ${(() => {
 
 <hr/>
 
+<h1>🔁 VISÃO 4: CICLO DE CORREÇÃO</h1>
+<p>De <strong>aberto</strong> a <strong>corrigido</strong>: em que fase está cada problema de TI que originou prejuízo, e quanto prejuízo cada fase ainda segura. A unidade aqui é o <strong>problema</strong> (um GDIS), não o chamado de prejuízo — por isso os totais desta seção não fecham com os das anteriores.</p>
+
+<table style="width: 100%; border-spacing: 8px; border-collapse: separate;">
+<tbody>
+<tr>
+<td style="background: #e8f5e9; border-left: 4px solid #388e3c; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 28px; font-weight: bold; color: #2e7d32;">${nfInt(probCorrigidos.length)}</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Problemas corrigidos</strong></div>
+<div style="font-size: 10px; color: #2e7d32; font-weight: bold;">${pcn(probCorrigidos.length, probTotal)}% de ${nfInt(probTotal)} rastreados</div>
+</td>
+
+<td style="background: #fff3e0; border-left: 4px solid #f57c00; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 28px; font-weight: bold; color: #e65100;">${nfInt(probEmCorrecao.length)}</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Em correção</strong></div>
+<div style="font-size: 10px; color: #666;">análise técnica em curso</div>
+</td>
+
+<td style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 28px; font-weight: bold; color: #c62828;">${nfInt(probN3.length)}</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>No Nível 3</strong></div>
+<div style="font-size: 10px; color: #c62828; font-weight: bold;">⚠️ GARGALO</div>
+</td>
+
+<td style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 20px; font-weight: bold; color: #c62828;">${nfBRL(valorRetido)}</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Prejuízo retido</strong></div>
+<div style="font-size: 10px; color: #666;">${nfInt(probAbertos.reduce((s, p) => s + p.qtd, 0))} SDPREJ travados</div>
+</td>
+
+<td style="background: #e8f5e9; border-left: 4px solid #388e3c; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-size: 20px; font-weight: bold; color: #2e7d32;">${nfBRL(valorDestravado)}</div>
+<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Prejuízo destravado</strong></div>
+<div style="font-size: 10px; color: #666;">${nfInt(probCorrigidos.reduce((s, p) => s + p.qtd, 0))} SDPREJ liberados</div>
+</td>
+</tr>
+</tbody>
+</table>
+
+<h3>Fases do problema — de aberto a corrigido</h3>
+<table>
+<tbody>
+<tr><th>Fase</th><th>Problemas</th><th>% do total</th><th>SDPREJ vinculados</th><th>Prejuízo R$</th></tr>
+${FASE_ORDEM.map(c => {
+  const g = problemas.filter(p => p.fase === c);
+  if (!g.length) return '';
+  return `<tr>
+<td><strong style="color: ${FASE_COR[c]};">${esc(FASE_LBL[c])}</strong></td>
+<td>${nfInt(g.length)}</td>
+<td style="text-align: right;">${pcn(g.length, probTotal)}%</td>
+<td style="text-align: right;">${nfInt(g.reduce((s, p) => s + p.qtd, 0))}</td>
+<td style="text-align: right;"><strong>${nfBRL(g.reduce((s, p) => s + p.valor, 0))}</strong></td>
+</tr>`;
+}).join('')}
+<tr style="background: #f5f5f5;">
+<td><strong>TOTAL</strong></td>
+<td><strong>${nfInt(probTotal)}</strong></td>
+<td style="text-align: right;"><strong>100%</strong></td>
+<td style="text-align: right;"><strong>${nfInt(problemas.reduce((s, p) => s + p.qtd, 0))}</strong></td>
+<td style="text-align: right;"><strong>${nfBRL(problemas.reduce((s, p) => s + p.valor, 0))}</strong></td>
+</tr>
+</tbody>
+</table>
+
+<h3>Fila de correção — onde corrigir devolve mais valor</h3>
+<p style="font-size: 12px; color: #666;">Problemas <strong>ainda não corrigidos</strong>, do que segura mais prejuízo para o que segura menos.</p>
+<table>
+<tbody>
+<tr><th>Problema</th><th>Fase</th><th>Tema predominante</th><th>SDPREJ</th><th>Dias</th><th>Prejuízo retido R$</th></tr>
+${[...probAbertos].sort((a, b) => b.valor - a.valor).slice(0, 10).map(p => `<tr>
+<td><a href="https://cvccorp.atlassian.net/browse/${esc(p.gdis)}"><strong>${esc(p.gdis)}</strong></a></td>
+<td style="color: ${FASE_COR[p.fase]}; font-weight: bold;">${esc(FASE_LBL[p.fase])}</td>
+<td>${esc(p.tema)}</td>
+<td style="text-align: right;">${nfInt(p.qtd)}</td>
+<td style="text-align: right;${p.dias > 365 ? ' color: #c62828; font-weight: bold;' : ''}">${nfInt(p.dias)}d</td>
+<td style="text-align: right; color: #c62828;"><strong>${nfBRL(p.valor)}</strong></td>
+</tr>`).join('')}
+</tbody>
+</table>
+
+<ac:structured-macro ac:name="tip">
+<ac:parameter ac:name="title">Onde ver o detalhe completo</ac:parameter>
+<ac:rich-text-body>
+<p>Esta seção é o resumo. O detalhe navegável está em dois lugares:</p>
+<ul>
+<li>A página <strong>"SDPREJ — Ciclo de Correção do Problema"</strong>, filha desta, com todas as fases e a lista completa do Nível 3.</li>
+<li>A aba <strong>"Ciclo de correção"</strong> do painel interativo, com filtros por fase e tema, ordenação por qualquer coluna e download em CSV.</li>
+</ul>
+</ac:rich-text-body>
+</ac:structured-macro>
+
+<hr/>
+
 <p style="font-size: 11px; color: #999; text-align: center; margin-top: 32px;">
-✅ Dashboard SDPREJ Premium — Trend Operadora<br/>
-📊 Dados atualizados automaticamente do Jira<br/>
-🔄 Atualização: Diária | 🖥️ Servidor: Ativo<br/>
-Versão 2.0 — Design Premium
+✅ Dashboard SDPREJ — Trend Operadora<br/>
+📊 Quatro visões: Temas · Vínculo com GDIS · Por analista · Ciclo de correção<br/>
+🔄 Painel atualizado automaticamente de segunda a sexta às 8:00<br/>
+Versão 2.1
 </p>
 `;
 
