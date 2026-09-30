@@ -55,14 +55,17 @@ não como resposta a incidente — feito em fases pequenas e verificadas uma a u
 | Code scanning (CodeQL) | ✅ Ativo |
 | Private vulnerability reporting | ✅ Ativo |
 | Security policy | ✅ `SECURITY.md` publicado |
-| Branch protection na `main` | ✅ Exige PR + Action verde |
+| Branch protection na `main` | ✅ Exige PR + Action verde de terceiros; dono do repo segue com bypass (decisão do responsável) |
 | Descoberta por buscador do painel público | ✅ `robots.txt` + `<meta noindex>` |
 | Permissões do workflow | ✅ Documentadas — só `contents:write` + `pages:write` |
 
-## 3. Pontos em aberto, conscientes e não resolvidos por decisão
+## 3. Pontos em aberto, conscientes e resolvidos ou não por decisão
 
-Isso não é dívida técnica esquecida — é o que foi discutido e explicitamente adiado para a volta:
+Isso não é dívida técnica esquecida — é o que foi discutido e explicitamente decidido ou adiado:
 
+- **Bypass de admin na branch protection: mantido de propósito.** O repositório é de um dono só;
+  a regra existe para travar um colaborador futuro, não para exigir PR do próprio responsável.
+  Decidido em 30/09/2026 — não reabrir a menos que outra pessoa passe a comitar no repositório.
 - **O repositório é público**, e o GitHub Pages publica o painel completo sem autenticação —
   incluindo nome de analista com métrica individual de produtividade (LGPD) e razão social de
   cliente/fornecedor. Decisão registrada como **provisória**, válida só para o período de
