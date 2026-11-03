@@ -36,7 +36,7 @@ function verificaTemas(DT) {
   /* As oito agregacoes precisam PARTICIONAR issues[]: se alguma nao fechar no
      total, ou o filtro perdeu chamado ou uma categoria esta contando duas vezes.
      E a checagem que pega erro de agregacao mais rapido. */
-  for (const nome of ['temas', 'problema', 'falha', 'areaFalha', 'aging', 'mensal', 'fornecedor', 'cliente']) {
+  for (const nome of ['temas', 'produto', 'tipos', 'problema', 'falha', 'areaFalha', 'aging', 'mensal', 'fornecedor', 'cliente']) {
     const g = DT[nome];
     const c = g.reduce((s, x) => s + x.count, 0);
     const v = A.arredonda(g.reduce((s, x) => s + x.valor, 0));
@@ -49,6 +49,8 @@ function verificaTemas(DT) {
      de fora: ele existe so como agregacao, o campo nao e guardado por chamado. */
   const casos = [
     ['temas',      A.agregar(it, i => i.temaDerivado, val, A.LIMITE.temas)],
+    ['produto',    A.agregar(it, i => i.produtoDerivado, val, A.LIMITE.produto)],
+    ['tipos',      A.agregar(it, i => i.tipoDerivado, val, null)],
     ['falha',      A.agregar(it, i => i.falha,        val, A.LIMITE.falha)],
     ['areaFalha',  A.agregar(it, i => i.areaFalha,    val, A.LIMITE.areaFalha)],
     ['fornecedor', A.agregar(it, i => i.fornecedor,   val, A.LIMITE.fornecedor)],
@@ -68,6 +70,26 @@ function verificaTemas(DT) {
     Object.entries(pares).sort((a, b) => b[1] - a[1])
       .forEach(([k, n]) => console.log('          ' + String(n).padStart(4) + 'x  ' + k));
   }
+
+  /* Produto recalculado do resumo: mesma natureza de tema, mesmo aviso. Como
+     e inferencia nova, vale reportar quantos casos caem no fallback — se for
+     uma fracao grande, as regras precisam de mais palavra-chave. */
+  const difProd = it.filter(i => D.produto(i.summary) !== i.produtoDerivado);
+  difProd.length
+    ? aviso('produto mudou em ' + difProd.length + ' de ' + it.length + ' chamados (regra editada desde a extracao)')
+    : ok('produto recalcula identico nos ' + it.length + ' resumos');
+  const naoIdent = it.filter(i => i.produtoDerivado === D.PRODUTO.NAO_IDENT).length;
+  const pctNaoIdent = (naoIdent / it.length * 100).toFixed(1);
+  (naoIdent / it.length > 0.4 ? aviso : ok)(
+    'produto "Não identificado" em ' + naoIdent + ' de ' + it.length + ' chamados (' + pctNaoIdent + '%)');
+
+  /* Tipo (tecnico/nao-tecnico) e tabela fixa sobre tema, nao fuzzy sobre
+     texto livre — qualquer divergencia aqui e bug de verdade, nao ambiguidade
+     de classificacao, por isso e FALHA e nao aviso. */
+  const difTipo = it.filter(i => D.classificaTemaTipo(i.temaDerivado) !== i.tipoDerivado);
+  difTipo.length
+    ? falha('tipo (tecnico/nao-tecnico) divergiu em ' + difTipo.length + ' chamados')
+    : ok('tipo recalcula identico nos ' + it.length + ' chamados');
 
   /* KPIs */
   const vs = it.map(val), ds = it.map(i => i.diasAberto);
@@ -94,7 +116,7 @@ function verificaGdis(GD) {
   let difBalde = 0, difTipo = 0;
   const semClasse = new Set();
   for (const r of GD.rows) {
-    const [, , , , , bruto, balde, gi] = r;
+    const bruto = r[7], balde = r[8], gi = r[9];
     const gstat = gi >= 0 ? GD.gsts[gi] : '';
     const tipo = D.classificaOcorrencia(bruto);
     const esperado = tipo === 'gdis' ? D.baldeStatus(gstat) : tipo;
@@ -118,9 +140,9 @@ function verificaGdis(GD) {
 
   /* Invariantes do universo, do plano. */
   const tot = GD.rows.length;
-  const comChave = GD.rows.filter(r => D.classificaOcorrencia(r[5]) === 'gdis').length;
-  const distintos = new Set(GD.rows.filter(r => D.classificaOcorrencia(r[5]) === 'gdis').map(r => r[5])).size;
-  const valor = A.soma(GD.rows.map(r => r[3]));
+  const comChave = GD.rows.filter(r => D.classificaOcorrencia(r[7]) === 'gdis').length;
+  const distintos = new Set(GD.rows.filter(r => D.classificaOcorrencia(r[7]) === 'gdis').map(r => r[7])).size;
+  const valor = A.soma(GD.rows.map(r => r[4]));
   conf('total do universo', tot, 1513);
   conf('chamados com chave GDIS', comChave, 1420);
   conf('GDIS distintos', distintos, 1199);
@@ -128,7 +150,7 @@ function verificaGdis(GD) {
 
   /* As cinco classes do painel precisam somar o universo. */
   const porClasse = {};
-  GD.rows.forEach(r => { const c = D.CLASSE[r[6]] || '?'; porClasse[c] = (porClasse[c] || 0) + 1; });
+  GD.rows.forEach(r => { const c = D.CLASSE[r[8]] || '?'; porClasse[c] = (porClasse[c] || 0) + 1; });
   const soma = Object.values(porClasse).reduce((a, b) => a + b, 0);
   soma === tot ? ok('as classes particionam ' + tot + ': ' + JSON.stringify(porClasse))
                : falha('classes somam ' + soma + ', esperado ' + tot);
@@ -191,6 +213,27 @@ function conf(rot, obtido, esperado) {
   else aviso(rot + ' = ' + obtido + ' (referencia de 2026-09-22: ' + esperado + ')');
 }
 
+/* ------------------------------------------------- historico encerrado ---- */
+
+function verificaEncerrados(HE) {
+  console.log('\nhistorico encerrado (' + HE.issues.length + ' chamados, extraido em ' + HE.geradoEm + ')');
+  const it = HE.issues, val = i => i.valor;
+
+  for (const nome of ['temas', 'produto', 'tipos', 'status', 'areaFalha', 'mensal']) {
+    const g = HE[nome];
+    const c = g.reduce((s, x) => s + x.count, 0);
+    const v = A.arredonda(g.reduce((s, x) => s + x.valor, 0));
+    if (c !== it.length) falha(`${nome}: soma ${c}, esperado ${it.length}`);
+    else if (v !== HE.kpis.valorTotal) falha(`${nome}: valor ${v}, esperado ${HE.kpis.valorTotal}`);
+    else ok(`${nome} particiona ${c} chamados e R$ ${v.toLocaleString('pt-BR')}`);
+  }
+
+  const difTipo = it.filter(i => D.classificaTemaTipo(i.temaDerivado) !== i.tipoDerivado);
+  difTipo.length
+    ? falha('tipo (tecnico/nao-tecnico) divergiu em ' + difTipo.length + ' chamados')
+    : ok('tipo recalcula identico nos ' + it.length + ' chamados');
+}
+
 /* ----------------------------------------------------- visao por analista - */
 
 function verificaAnalistas(DA) {
@@ -243,7 +286,7 @@ function verificaAnalistas(DA) {
 /* -------------------------------------------------------------- main ------ */
 
 function main() {
-  const arqs = { temas: 'temas.json', analistas: 'analistas.json', gdis: 'gdis.json' };
+  const arqs = { temas: 'temas.json', analistas: 'analistas.json', gdis: 'gdis.json', encerrados: 'encerrados.json' };
   const faltando = Object.values(arqs).filter(f => !fs.existsSync(path.join(RAIZ, 'data', f)));
   if (faltando.length) {
     console.error('Faltam payloads em data/: ' + faltando.join(', '));
@@ -254,6 +297,7 @@ function main() {
   verificaTemas(ler(arqs.temas));
   verificaGdis(ler(arqs.gdis));
   verificaAnalistas(ler(arqs.analistas));
+  verificaEncerrados(ler(arqs.encerrados));
 
   console.log('\n' + (falhas ? falhas + ' FALHA(S)' : 'nenhuma falha') +
               (avisos ? ', ' + avisos + ' nota(s)' : ''));

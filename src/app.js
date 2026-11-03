@@ -5,6 +5,10 @@ const nfBRL=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maxim
 const nfBRL2=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const shortN=v=>v>=1e6?(v/1e6).toFixed(2).replace('.',',')+' mi':v>=1e3?Math.round(v/1e3)+' mil':nfInt.format(Math.round(v));
+/* unico ponto de formatacao de moeda com simbolo: substitui a concatenacao
+   manual 'R$ '+nfBRL2.format(...) que estava espalhada pelo arquivo. */
+const fmtBRL=v=>'R$ '+nfBRL2.format(v);
+const fmtBRLCompact=v=>'R$ '+shortN(v);
 const MN=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const mLab=m=>{const[y,mm]=m.split('-');return MN[+mm-1]+'/'+y.slice(2);};
 const mFull=m=>{const[y,mm]=m.split('-');return MN[+mm-1]+'/'+y;};
@@ -118,17 +122,30 @@ const ViewTemas=(function(){
     vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o);});
   }
   fill('fTema',uniq('temaDerivado')); fill('fArea',uniq('areaFalha')); fill('fAging',AG);
+  fill('fProduto',uniq('produtoDerivado'));
+
+  /* periodo: mesmo padrao de fPeriodo/cutoff() da visao Analistas, com id
+     proprio porque as 4 secoes ficam todas no DOM ao mesmo tempo. */
+  const TMONTHS=[...new Set(I.map(i=>i.created.slice(0,7)))].sort();
+  function tcutoff(){
+    const v=document.getElementById('tPeriodo').value;
+    return v?(TMONTHS.slice(-parseInt(v,10))[0]||null):null;
+  }
 
   function current(){
     const t=document.getElementById('fTema').value, a=document.getElementById('fArea').value,
           g=document.getElementById('fAging').value,
           gd=document.getElementById('fGdis').value,
+          p=document.getElementById('fProduto').value,
+          cut=tcutoff(),
           q=document.getElementById('fBusca').value.trim().toLowerCase();
     return I.filter(i=>{
       if(t&&(i.temaDerivado||'Não informado')!==t) return false;
       if(a&&(i.areaFalha||'Não informado')!==a) return false;
       if(g&&i.aging!==g) return false;
       if(gd&&i.gcls!==gd) return false;
+      if(p&&(i.produtoDerivado||'Não informado')!==p) return false;
+      if(cut&&i.created.slice(0,7)<cut) return false;
       if(q){
         const hay=[i.key,i.summary,i.fornecedor,i.cliente,i.ocorrencia,i.temaDerivado,i.areaFalha,i.gcls,i.gstat]
           .filter(Boolean).join(' ').toLowerCase();
@@ -157,8 +174,8 @@ const ViewTemas=(function(){
   }
   const toRows=(a,total)=>a.map(r=>({name:r.name,value:r[metric],
     tip:`<span>${nfInt.format(r.count)} chamado(s) · ${total?(r.count/total*100).toFixed(1):0}% do recorte</span>`+
-        `<span>R$ ${nfBRL2.format(r.valor)}</span>`+
-        `<span>Ticket médio: R$ ${nfBRL2.format(r.count?r.valor/r.count:0)}</span>`,isOther:r.isOther}));
+        `<span>${fmtBRL(r.valor)}</span>`+
+        `<span>Ticket médio: ${fmtBRL(r.count?r.valor/r.count:0)}</span>`,isOther:r.isOther}));
   const fmtBar=r=>metric==='count'?nfInt.format(r.value):nfBRL.format(r.value);
 
   function heat(rows){
@@ -228,7 +245,7 @@ const ViewTemas=(function(){
         <td>${gdisPill(r.key)}</td></tr>`;
     }).join('');
     document.getElementById('t-count').textContent=
-      `Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rows.length)} chamados · soma do recorte R$ ${nfBRL2.format(rows.reduce((s,r)=>s+r.valor,0))}`;
+      `Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rows.length)} chamados · soma do recorte ${fmtBRL(rows.reduce((s,r)=>s+r.valor,0))}`;
     document.getElementById('t-more').style.display=sl.length<rows.length?'':'none';
     document.querySelectorAll('#t-dt th').forEach(th=>{
       const a=th.querySelector('.ar');
@@ -265,27 +282,36 @@ const ViewTemas=(function(){
     hbarsInto('ch-tema',toRows(t,rows.length),{fmt:fmtBar});
     const lead=t.filter(r=>!r.isOther)[0];
     document.getElementById('cs-tema').innerHTML=lead
-      ? `Derivado do padrão do resumo. Liderança: <b>${esc(lead.name)}</b> com ${nfInt.format(lead.count)} chamados (${(lead.count/rows.length*100).toFixed(0)}%) e R$ ${nfBRL2.format(lead.valor)}.`
+      ? `Derivado do padrão do resumo. Liderança: <b>${esc(lead.name)}</b> com ${nfInt.format(lead.count)} chamados (${(lead.count/rows.length*100).toFixed(0)}%) e ${fmtBRL(lead.valor)}.`
       : 'Derivado do padrão do resumo do chamado.';
     hbarsInto('ch-falha',toRows(agg(rows,'falha',6),rows.length),{fmt:fmtBar});
     hbarsInto('ch-area',toRows(agg(rows,'areaFalha',8),rows.length),{fmt:fmtBar});
     hbarsInto('ch-forn',toRows(agg(rows,'fornecedor',12),rows.length),{fmt:fmtBar});
     hbarsInto('ch-cli',toRows(agg(rows,'cliente',12),rows.length),{fmt:fmtBar});
+    hbarsInto('ch-prod',toRows(agg(rows,'produtoDerivado',8),rows.length),{fmt:fmtBar});
+
+    /* Natureza do prejuízo: técnico vs não-técnico vs ambíguo — proposta de
+       classificação por tema, ver comentário em extract/derive.js. */
+    const tp=agg(rows,'tipoDerivado',null);
+    hbarsInto('ch-tipo',toRows(tp,rows.length),{fmt:fmtBar});
+    document.getElementById('t-kpis-tipo').innerHTML=tp.map(r=>`
+      <div class="tile"><div class="k">${esc(r.name)}</div><div class="v">${nfInt.format(r.count)}</div>
+        <div class="n">${rows.length?(r.count/rows.length*100).toFixed(0):0}% do recorte · ${fmtBRL(r.valor)}</div></div>`).join('');
 
     /* Novo: Valor por departamento responsável (estado atual) */
     const dept=agg(rows,'areaFalha',12);
     const m_save=metric; metric='valor';
     hbarsInto('ch-dept',toRows(dept,rows.length),{fmt:fmtBar});
     document.getElementById('cs-dept').innerHTML=
-      dept.length?'Valor acumulado por departamento responsável. Liderança: <b>'+esc(dept[0].name)+'</b> com R$ '+nfBRL2.format(dept[0].valor)+'.'
+      dept.length?'Valor acumulado por departamento responsável. Liderança: <b>'+esc(dept[0].name)+'</b> com '+fmtBRL(dept[0].valor)+'.'
       :'Sem dados.';
     metric=m_save;
 
     const ag=agg(rows,'aging',null,AG);
     barsInto('ch-aging',AG,[{label:'Chamados',values:ag.map(r=>r[metric])}],
       {ordinal:true,rotate:true,mB:56,h:250,catLabel:c=>c.replace(' dias',''),
-       fmtY:v=>metric==='valor'?shortN(v):nfInt.format(Math.round(v)),
-       fmtV:v=>metric==='valor'?shortN(v):nfInt.format(v)});
+       fmtY:v=>metric==='valor'?fmtBRLCompact(v):nfInt.format(Math.round(v)),
+       fmtV:v=>metric==='valor'?fmtBRLCompact(v):nfInt.format(v)});
 
     const byM=new Map();
     rows.forEach(r=>{const k=r.created.slice(0,7);
@@ -305,17 +331,17 @@ const ViewTemas=(function(){
     barsInto('ch-mesq',months.map(r=>r.name),[{label:'Chamados',values:months.map(r=>r.count)}],
       {rotate:true,every:ev,mB:52,catLabel:mLab,labelMode:'series'});
     barsInto('ch-mesv',months.map(r=>r.name),[{label:'Valor',values:months.map(r=>r.valor)}],
-      {rotate:true,every:ev,mB:52,catLabel:mLab,fmtY:shortN,fmtV:shortN});
+      {rotate:true,every:ev,mB:52,catLabel:mLab,fmtY:fmtBRLCompact,fmtV:fmtBRLCompact});
 
     heat(rows); table(rows);
   }
 
-  ['fTema','fArea','fAging','fGdis'].forEach(id=>document.getElementById(id)
+  ['fTema','fArea','fAging','fGdis','fProduto','tPeriodo'].forEach(id=>document.getElementById(id)
     .addEventListener('change',()=>{shown=100;render();}));
   let deb; document.getElementById('fBusca').addEventListener('input',()=>{
     clearTimeout(deb); deb=setTimeout(()=>{shown=100;render();},180);});
   document.getElementById('t-clear').addEventListener('click',()=>{
-    ['fTema','fArea','fAging','fGdis'].forEach(id=>document.getElementById(id).value='');
+    ['fTema','fArea','fAging','fGdis','fProduto','tPeriodo'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('fBusca').value=''; shown=100; render();});
   document.getElementById('segMetric').addEventListener('click',e=>{
     const b=e.target.closest('button[data-m]'); if(!b) return;
@@ -329,8 +355,8 @@ const ViewTemas=(function(){
   document.getElementById('t-more').addEventListener('click',()=>{shown+=100;render();});
   document.getElementById('t-csv').addEventListener('click',()=>{
     const rows=current();
-    const cols=['key','summary','temaDerivado','areaFalha','falha','fornecedor','cliente','created','diasAberto','valor','ocorrencia','gkey','gstat','gcls'];
-    const head=['Chave','Resumo','Tema','Area identificadora','Falha','Fornecedor/Hotel','Cliente','Criado','Dias aberto','Valor R$','Ocorrencia','GDIS','Status do GDIS','Situacao do GDIS'];
+    const cols=['key','summary','temaDerivado','produtoDerivado','tipoDerivado','areaFalha','falha','fornecedor','cliente','created','diasAberto','valor','ocorrencia','gkey','gstat','gcls'];
+    const head=['Chave','Resumo','Tema','Produto','Natureza','Area identificadora','Falha','Fornecedor/Hotel','Cliente','Criado','Dias aberto','Valor R$','Ocorrencia','GDIS','Status do GDIS','Situacao do GDIS'];
     const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
     const csv='﻿'+[head.join(';'),...rows.map(r=>cols.map(c=>q(c==='valor'?String(r[c]).replace('.',','):r[c])).join(';'))].join('\r\n');
     const a=document.createElement('a');
@@ -577,7 +603,7 @@ const ViewAna=(function(){
       <td class="num ${r.diasNaFila>180?'age-hi':''}">${nfInt.format(r.diasNaFila)}</td>
       <td class="num" style="font-weight:620">${nfBRL2.format(r.valor)}</td></tr>`).join('');
     document.getElementById('a-count').textContent=
-      `Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rows.length)} chamados na fila · R$ ${nfBRL2.format(rows.reduce((a,b)=>a+b.valor,0))}`;
+      `Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rows.length)} chamados na fila · ${fmtBRL(rows.reduce((a,b)=>a+b.valor,0))}`;
     document.getElementById('a-more').style.display=sl.length<rows.length?'':'none';
     document.querySelectorAll('#a-dt th').forEach(th=>{
       const a=th.querySelector('.ar');
@@ -648,10 +674,13 @@ const GNIV=[{c:'n1',lbl:'Nível 1',color:'var(--ord-1)'},
             {c:'n2',lbl:'Nível 2',color:'var(--ord-3)'},
             {c:'n3',lbl:'Nível 3',color:'var(--ord-5)'}];
 
+/* indices de GD.rows: [keyNum,stIdx,temaIdx,prodIdx,valor,dias,mes,bruto,balde,gstsIdx] —
+   ver comentario de esquema em extract/gdis.js. */
 const GI=GD.rows.map(r=>{
-  const bk=r[6], g=r[5]||'';
-  return {key:'SDPREJ-'+r[0],etapa:GD.sts[r[1]],tema:GD.temas[r[2]],valor:r[3],dias:r[4],
-          gdis:g,bk:bk,cls:GBK[bk]||'sem',gstat:r[7]>=0?GD.gsts[r[7]]:'',
+  const bk=r[8], g=r[7]||'';
+  return {key:'SDPREJ-'+r[0],etapa:GD.sts[r[1]],tema:GD.temas[r[2]],produto:GD.prods[r[3]],
+          valor:r[4],dias:r[5],mes:r[6],
+          gdis:g,bk:bk,cls:GBK[bk]||'sem',gstat:r[9]>=0?GD.gsts[r[9]]:'',
           temG:/^GDIS-\d+$/.test(g)};
 });
 const GLK=new Map(GI.map(o=>[o.key,o]));
@@ -686,7 +715,7 @@ function stackedInto(mountId,rows,classes,opt){
       `<span><i style="background:${c.color}"></i>${esc(c.lbl)}: ${nfInt.format(r.parts[c.c])}`+
       ` &middot; ${(r.parts[c.c]/tot*100).toFixed(1).replace('.',',')}%</span>`).join('')+
       `<span style="margin-top:4px">Total: ${nfInt.format(tot)} chamados`+
-      (r.valor!=null?` &middot; R$ ${nfBRL2.format(r.valor)}`:'')+`</span>`);
+      (r.valor!=null?` &middot; ${fmtBRL(r.valor)}`:'')+`</span>`);
     el.appendChild(row);
   });
 }
@@ -696,25 +725,38 @@ const ViewGdis=(function(){
   let metric='count', sortKey='dias', sortDir=-1, shown=100;
   const ETAPAS=[...new Set(GI.map(o=>o.etapa))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const TEMAS=[...new Set(GI.map(o=>o.tema))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const PRODUTOS=[...new Set(GI.map(o=>o.produto))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   function fill(id,vals){
     const s=document.getElementById(id);
     vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o);});
   }
-  fill('gEtapa',ETAPAS); fill('gTema',TEMAS); fill('gSit',GCLS.map(c=>c.lbl));
+  fill('gEtapa',ETAPAS); fill('gTema',TEMAS); fill('gSit',GCLS.map(c=>c.lbl)); fill('gProduto',PRODUTOS);
 
   const sum=(rs,f)=>rs.reduce((a,r)=>a+f(r),0);
   const avgD=rs=>rs.length?Math.round(sum(rs,r=>r.dias)/rs.length):0;
   const fmtM=v=>metric==='count'?nfInt.format(v):nfBRL.format(v);
   const pc=(a,b)=>b?(a/b*100).toFixed(1).replace('.',','):'0';
 
+  /* periodo: mesmo padrao das visoes Temas/Analistas — aqui corta por mes de
+     abertura do SDPREJ (GI.mes), nao por data do GDIS. */
+  const GMONTHS=[...new Set(GI.map(o=>o.mes).filter(Boolean))].sort();
+  function gcutoff(){
+    const v=document.getElementById('gPeriodo').value;
+    return v?(GMONTHS.slice(-parseInt(v,10))[0]||null):null;
+  }
+
   function current(){
     const e=document.getElementById('gEtapa').value, t=document.getElementById('gTema').value,
           s=document.getElementById('gSit').value,
+          p=document.getElementById('gProduto').value,
+          cut=gcutoff(),
           q=document.getElementById('gBusca').value.trim().toLowerCase();
     return GI.filter(o=>{
       if(e&&o.etapa!==e) return false;
       if(t&&o.tema!==t) return false;
       if(s&&GCOL[o.cls].lbl!==s) return false;
+      if(p&&o.produto!==p) return false;
+      if(cut&&o.mes<cut) return false;
       if(q){
         const hay=[o.key,o.gdis,o.gstat,o.tema,o.etapa,GCOL[o.cls].lbl].filter(Boolean).join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
@@ -750,7 +792,7 @@ const ViewGdis=(function(){
       const g=rs.filter(r=>r.cls===c.c);
       return {name:c.lbl,value:metric==='count'?g.length:sum(g,r=>r.valor),color:c.color,n:g.length,
         tip:`<span>${nfInt.format(g.length)} chamados &middot; ${pc(g.length,rs.length)}% do recorte</span>`+
-            `<span>R$ ${nfBRL2.format(sum(g,r=>r.valor))}</span>`+
+            `<span>${fmtBRL(sum(g,r=>r.valor))}</span>`+
             (g.length?`<span>idade média ${nfInt.format(avgD(g))} dias</span>`:'')};
     }).filter(r=>r.n>0);
     hbarsInto('g-ch-sit',rows,{fmt:r=>fmtM(r.value)});
@@ -773,7 +815,7 @@ const ViewGdis=(function(){
     document.getElementById('g-note-etapa').innerHTML = fila.length
       ? `Na etapa <b>análise área responsável</b>, <b>${nfInt.format(ff.length)} dos ${nfInt.format(fila.length)}</b> `+
         `chamados (${pc(ff.length,fila.length)}%) apontam um GDIS <b>já concluído</b> — `+
-        `<b>R$ ${nfBRL2.format(sum(ff,r=>r.valor))}</b>, com idade média de <b>${nfInt.format(avgD(ff))} dias</b>. `+
+        `<b>${fmtBRL(sum(ff,r=>r.valor))}</b>, com idade média de <b>${nfInt.format(avgD(ff))} dias</b>. `+
         (fa.length?`Os que de fato aguardam análise técnica esperam, em média, <b>${nfInt.format(avgD(fa))} dias</b>. `+
           `A diferença indica que a espera está no processo de prejuízo, não na investigação do incidente.`
           :`Nenhum chamado dessa etapa aguarda análise técnica no recorte atual.`)
@@ -786,7 +828,7 @@ const ViewGdis=(function(){
       const g=em.filter(r=>r.bk===nv.c);
       return {name:nv.lbl,value:metric==='count'?g.length:sum(g,r=>r.valor),color:nv.color,
         tip:`<span>${nfInt.format(g.length)} chamados &middot; ${pc(g.length,em.length)}% dos em análise</span>`+
-            `<span>R$ ${nfBRL2.format(sum(g,r=>r.valor))}</span>`+
+            `<span>${fmtBRL(sum(g,r=>r.valor))}</span>`+
             (g.length?`<span>idade média ${nfInt.format(avgD(g))} dias</span>`:'')};
     });
     hbarsInto('g-ch-niv',rows,{fmt:r=>fmtM(r.value)});
@@ -807,6 +849,16 @@ const ViewGdis=(function(){
             (g.length?`<span>mais antigo ${nfInt.format(Math.max(...g.map(r=>r.dias)))} dias</span>`:'')};
     }).filter(r=>r.n>0);
     hbarsInto('g-ch-idade',rows,{fmt:r=>nfInt.format(r.value)+' d'});
+  }
+
+  function chProd(rs){
+    const rows=PRODUTOS.map(p=>{
+      const g=rs.filter(r=>r.produto===p);
+      return {name:p,value:metric==='count'?g.length:sum(g,r=>r.valor),n:g.length,
+        tip:`<span>${nfInt.format(g.length)} chamados &middot; ${pc(g.length,rs.length)}% do recorte</span>`+
+            `<span>${fmtBRL(sum(g,r=>r.valor))}</span>`};
+    }).filter(r=>r.n>0).sort((a,b)=>b.value-a.value);
+    hbarsInto('g-ch-prod',rows,{fmt:r=>fmtM(r.value)});
   }
 
   function chTema(rs){
@@ -860,7 +912,7 @@ const ViewGdis=(function(){
       :'<tr><td colspan="5" class="empty">Nenhum GDIS repetido no recorte atual.</td></tr>';
     document.getElementById('g-cs-multi').innerHTML=
       `<b>${nfInt.format(arr.length)}</b> incidentes respondem por <b>${nfInt.format(arr.reduce((s,e)=>s+e.keys.length,0))}</b> `+
-      `chamados de prejuízo, somando <b>R$ ${nfBRL2.format(arr.reduce((s,e)=>s+e.valor,0))}</b>. `+
+      `chamados de prejuízo, somando <b>${fmtBRL(arr.reduce((s,e)=>s+e.valor,0))}</b>. `+
       `Resolver um desses fecha vários prejuízos de uma vez.`;
   }
 
@@ -874,7 +926,7 @@ const ViewGdis=(function(){
       <td class="num" style="font-weight:620">${nfBRL2.format(r.valor)}</td></tr>`).join('')
       :'<tr><td colspan="5" class="empty">Todos os chamados do recorte têm GDIS rastreável.</td></tr>';
     document.getElementById('g-cs-sem').innerHTML=
-      `<b>${nfInt.format(arr.length)}</b> chamados &middot; <b>R$ ${nfBRL2.format(sum(arr,r=>r.valor))}</b>. `+
+      `<b>${nfInt.format(arr.length)}</b> chamados &middot; <b>${fmtBRL(sum(arr,r=>r.valor))}</b>. `+
       `A coluna do meio traz o conteúdo bruto do campo, do jeito que está no Jira, para permitir a correção.`;
   }
 
@@ -896,7 +948,7 @@ const ViewGdis=(function(){
       <td class="num" style="font-weight:620">${nfBRL2.format(r.valor)}</td></tr>`).join('')
       :'<tr><td colspan="7" class="empty">Sem chamados no recorte atual.</td></tr>';
     document.getElementById('g-count').textContent=
-      `Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rs.length)} chamados · soma do recorte R$ ${nfBRL2.format(sum(rs,r=>r.valor))}`;
+      `Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rs.length)} chamados · soma do recorte ${fmtBRL(sum(rs,r=>r.valor))}`;
     document.getElementById('g-more').style.display=sl.length<rs.length?'':'none';
     document.querySelectorAll('#g-dt th').forEach(th=>{
       const a=th.querySelector('.ar'); if(!a) return;
@@ -907,16 +959,16 @@ const ViewGdis=(function(){
 
   function render(){
     const rs=current();
-    kpis(rs); chSit(rs); chEtapa(rs); chNivel(rs); chIdade(rs); chTema(rs);
+    kpis(rs); chSit(rs); chEtapa(rs); chNivel(rs); chIdade(rs); chTema(rs); chProd(rs);
     tblCat(rs); table(rs); tblMulti(rs); tblSem(rs);
   }
 
-  ['gEtapa','gTema','gSit'].forEach(id=>document.getElementById(id)
+  ['gEtapa','gTema','gSit','gProduto','gPeriodo'].forEach(id=>document.getElementById(id)
     .addEventListener('change',()=>{shown=100;render();}));
   let deb; document.getElementById('gBusca').addEventListener('input',()=>{
     clearTimeout(deb); deb=setTimeout(()=>{shown=100;render();},180);});
   document.getElementById('g-clear').addEventListener('click',()=>{
-    ['gEtapa','gTema','gSit'].forEach(id=>document.getElementById(id).value='');
+    ['gEtapa','gTema','gSit','gProduto','gPeriodo'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('gBusca').value=''; shown=100; render();});
   document.getElementById('gMetric').addEventListener('click',e=>{
     const b=e.target.closest('button[data-m]'); if(!b) return;
@@ -1038,14 +1090,14 @@ const ViewRel=(function(){
       return {name:f.lbl,value:metric==='count'?g.length:sum(g,r=>r.valor),color:f.color,
         tip:`<span>${nfInt.format(g.length)} problema${g.length===1?'':'s'}</span>`+
             `<span>${nfInt.format(sum(g,r=>r.qtd))} SDPREJ vinculados</span>`+
-            `<span>R$ ${nfBRL2.format(sum(g,r=>r.valor))}</span>`};
+            `<span>${fmtBRL(sum(g,r=>r.valor))}</span>`};
     });
     hbarsInto('r-ch-funil',rows,{fmt:r=>fmtM(r.value)});
     const fim=rs.filter(r=>RF[r.fase].fim).length;
     const ab=rs.filter(aberto);
     document.getElementById('r-cs-funil').innerHTML=rs.length
       ? `<b>${pc(fim,rs.length)}%</b> dos problemas do recorte já foram corrigidos. Os ${nfInt.format(ab.length)} `+
-        `restantes seguram <b>R$ ${nfBRL2.format(sum(ab,r=>r.valor))}</b> em ${nfInt.format(sum(ab,r=>r.qtd))} chamados de prejuízo.`
+        `restantes seguram <b>${fmtBRL(sum(ab,r=>r.valor))}</b> em ${nfInt.format(sum(ab,r=>r.qtd))} chamados de prejuízo.`
       : 'Sem problemas no recorte atual.';
   }
 
@@ -1056,7 +1108,7 @@ const ViewRel=(function(){
         value:metric==='count'?g.length:sum(g,r=>r.valor),color:RF[c].color,
         tip:`<span>${nfInt.format(g.length)} problema${g.length===1?'':'s'}</span>`+
             `<span>${nfInt.format(sum(g,r=>r.qtd))} SDPREJ</span>`+
-            `<span>R$ ${nfBRL2.format(sum(g,r=>r.valor))}</span>`};
+            `<span>${fmtBRL(sum(g,r=>r.valor))}</span>`};
     });
     hbarsInto('r-ch-niv',rows,{fmt:r=>fmtM(r.value)});
     const n3=rs.filter(r=>r.fase==='n3');
@@ -1064,7 +1116,7 @@ const ViewRel=(function(){
     document.getElementById('r-note-niv').innerHTML=emCor.length
       ? (n3.length
           ? `O Nível 3 concentra <b>${nfInt.format(n3.length)}</b> de ${nfInt.format(emCor.length)} problemas em `+
-            `análise (${pc(n3.length,emCor.length)}%) e <b>R$ ${nfBRL2.format(sum(n3,r=>r.valor))}</b> em prejuízo. `+
+            `análise (${pc(n3.length,emCor.length)}%) e <b>${fmtBRL(sum(n3,r=>r.valor))}</b> em prejuízo. `+
             `É o escalonamento mais alto — o que não se resolve nele não tem para onde subir.`
           : `Nenhum problema no Nível 3 neste recorte: a análise em curso está toda em N1/N2.`)
       : 'Nenhum problema em análise técnica neste recorte.';
@@ -1080,7 +1132,7 @@ const ViewRel=(function(){
       .sort((a,b)=>metric==='count'?b[1].n-a[1].n:b[1].v-a[1].v).slice(0,8)
       .map(([name,e],i)=>({name,value:metric==='count'?e.n:e.v,color:`var(${ORD[Math.min(i,4)]})`,
         tip:`<span>${nfInt.format(e.n)} problema${e.n===1?'':'s'} em aberto</span>`+
-            `<span>${nfInt.format(e.q)} SDPREJ</span><span>R$ ${nfBRL2.format(e.v)}</span>`}));
+            `<span>${nfInt.format(e.q)} SDPREJ</span><span>${fmtBRL(e.v)}</span>`}));
     hbarsInto('r-ch-tema',rows,{fmt:r=>fmtM(r.value)});
   }
 
@@ -1124,7 +1176,7 @@ const ViewRel=(function(){
       :'<tr><td colspan="7" class="empty">Sem problemas no recorte atual.</td></tr>';
     document.getElementById('r-count').textContent=
       `Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rs.length)} problemas · `+
-      `${nfInt.format(sum(rs,r=>r.qtd))} SDPREJ vinculados · soma do recorte R$ ${nfBRL2.format(sum(rs,r=>r.valor))}`;
+      `${nfInt.format(sum(rs,r=>r.qtd))} SDPREJ vinculados · soma do recorte ${fmtBRL(sum(rs,r=>r.valor))}`;
     document.getElementById('r-more').style.display=sl.length<rs.length?'':'none';
     document.querySelectorAll('#r-dt th').forEach(th=>{
       const a=th.querySelector('.ar'); if(!a) return;
@@ -1172,12 +1224,165 @@ const ViewRel=(function(){
 })();
 
 
+/* ===================== VIEW: HISTÓRICO ENCERRADO ===================== */
+const ViewHE=(function(){
+  const I=HE.issues;
+  let sortKey='valor', sortDir=-1, shown=100;
+  I.forEach(i=>{ i.valor=+i.valor||0; });
+  const uniq=k=>[...new Set(I.map(x=>x[k]||'Não informado'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  function fill(id,vals){
+    const s=document.getElementById(id);
+    vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o);});
+  }
+  fill('heTema',uniq('temaDerivado')); fill('heProduto',uniq('produtoDerivado'));
+  fill('heArea',uniq('areaFalha')); fill('heStatus',uniq('status'));
+
+  const HMONTHS=[...new Set(I.map(i=>i.created.slice(0,7)))].sort();
+  function hcutoff(){
+    const v=document.getElementById('hePeriodo').value;
+    return v?(HMONTHS.slice(-parseInt(v,10))[0]||null):null;
+  }
+
+  function current(){
+    const t=document.getElementById('heTema').value, p=document.getElementById('heProduto').value,
+          a=document.getElementById('heArea').value, s=document.getElementById('heStatus').value,
+          cut=hcutoff(), q=document.getElementById('heBusca').value.trim().toLowerCase();
+    return I.filter(i=>{
+      if(t&&(i.temaDerivado||'Não informado')!==t) return false;
+      if(p&&(i.produtoDerivado||'Não informado')!==p) return false;
+      if(a&&(i.areaFalha||'Não informado')!==a) return false;
+      if(s&&i.status!==s) return false;
+      if(cut&&i.created.slice(0,7)<cut) return false;
+      if(q){
+        const hay=[i.key,i.summary,i.fornecedor,i.cliente,i.temaDerivado,i.status].filter(Boolean).join(' ').toLowerCase();
+        if(!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+  function agg(rows,key,topN){
+    const m=new Map();
+    rows.forEach(r=>{
+      const k=r[key]||'Não informado';
+      const e=m.get(k)||{name:k,count:0,valor:0};
+      e.count++; e.valor+=r.valor; m.set(k,e);
+    });
+    let arr=[...m.values()].sort((a,b)=>b.count-a.count||b.valor-a.valor);
+    if(topN&&arr.length>topN){
+      const head=arr.slice(0,topN), tail=arr.slice(topN);
+      head.push({name:`Outros (${tail.length})`,count:tail.reduce((s,x)=>s+x.count,0),
+                 valor:tail.reduce((s,x)=>s+x.valor,0),isOther:true});
+      arr=head;
+    }
+    return arr;
+  }
+  const toRows=a=>a.map(r=>({name:r.name,value:r.count,
+    tip:`<span>${nfInt.format(r.count)} chamado(s)</span><span>${fmtBRL(r.valor)}</span>`,isOther:r.isOther}));
+
+  function kpis(rows){
+    const tot=rows.length, val=rows.reduce((s,r)=>s+r.valor,0);
+    const vs=rows.map(r=>r.valor).sort((a,b)=>a-b);
+    const med=tot?vs[Math.floor(tot/2)]:0;
+    const resolvidos=rows.filter(r=>r.diasParaEncerrar!=null);
+    const tempoMedio=resolvidos.length?Math.round(resolvidos.reduce((s,r)=>s+r.diasParaEncerrar,0)/resolvidos.length):0;
+    document.getElementById('he-kpis').innerHTML=`
+      <div class="tile"><div class="k">Chamados encerrados</div><div class="v">${nfInt.format(tot)}</div>
+        <div class="n">no recorte atual &middot; fora dos KPIs do backlog ativo</div></div>
+      <div class="tile"><div class="k">Valor total</div><div class="v">${nfBRL.format(val)}</div>
+        <div class="n">soma do prejuízo nos chamados já encerrados</div></div>
+      <div class="tile"><div class="k">Valor mediano</div><div class="v">${nfBRL.format(med)}</div></div>
+      <div class="tile"><div class="k">Tempo médio até encerrar</div><div class="v">${nfInt.format(tempoMedio)}<small> dias</small></div>
+        <div class="n">${nfInt.format(resolvidos.length)} chamado(s) com data de encerramento registrada</div></div>`;
+  }
+
+  function table(rows){
+    const sorted=[...rows].sort((a,b)=>{
+      let x=a[sortKey],y=b[sortKey];
+      if(sortKey==='valor') return ((+x||0)-(+y||0))*sortDir;
+      return String(x||'').localeCompare(String(y||''),'pt-BR')*sortDir;
+    });
+    const sl=sorted.slice(0,shown);
+    document.querySelector('#he-dt tbody').innerHTML=sl.map(r=>`<tr>
+      <td><a href="${JIRA}${esc(r.key)}" target="_blank" rel="noopener">${esc(r.key)}</a></td>
+      <td class="sum" title="${esc(r.summary)}">${esc(r.summary)}</td>
+      <td><span class="pill">${esc(r.temaDerivado)}</span></td>
+      <td style="color:var(--text-secondary)">${esc(r.status)}</td>
+      <td class="num" style="color:var(--text-secondary)">${esc(r.created)}</td>
+      <td class="num" style="color:var(--text-secondary)">${esc(r.encerradoEm||'—')}</td>
+      <td class="num" style="font-weight:620">${nfBRL2.format(r.valor)}</td></tr>`).join('');
+    document.getElementById('he-count').textContent=
+      `Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rows.length)} chamados · soma do recorte ${fmtBRL(rows.reduce((s,r)=>s+r.valor,0))}`;
+    document.getElementById('he-more').style.display=sl.length<rows.length?'':'none';
+    document.querySelectorAll('#he-dt th').forEach(th=>{
+      const a=th.querySelector('.ar');
+      a.textContent=th.dataset.s===sortKey?(sortDir>0?'▲':'▼'):'↕';
+      a.style.opacity=th.dataset.s===sortKey?1:.45;
+    });
+  }
+
+  function render(){
+    const rows=current();
+    kpis(rows);
+    hbarsInto('he-ch-tema',toRows(agg(rows,'temaDerivado',8)));
+    hbarsInto('he-ch-prod',toRows(agg(rows,'produtoDerivado',8)));
+    hbarsInto('he-ch-tipo',toRows(agg(rows,'tipoDerivado',null)));
+    hbarsInto('he-ch-status',toRows(agg(rows,'status',null)));
+    hbarsInto('he-ch-area',toRows(agg(rows,'areaFalha',8)));
+
+    const byM=new Map();
+    rows.forEach(r=>{const k=r.created.slice(0,7);
+      const e=byM.get(k)||{name:k,count:0,valor:0};e.count++;e.valor+=r.valor;byM.set(k,e);});
+    let months=[];
+    if(byM.size){
+      const ks=[...byM.keys()].sort();
+      let [y,m]=ks[0].split('-').map(Number);
+      const [ey,em]=ks[ks.length-1].split('-').map(Number);
+      while(y<ey||(y===ey&&m<=em)){
+        const k=`${y}-${String(m).padStart(2,'0')}`;
+        months.push(byM.get(k)||{name:k,count:0,valor:0});
+        m++; if(m>12){m=1;y++;}
+      }
+    }
+    const ev=Math.max(1,Math.ceil(months.length/12));
+    barsInto('he-ch-mes',months.map(r=>r.name),[{label:'Valor',values:months.map(r=>r.valor)}],
+      {rotate:true,every:ev,mB:52,catLabel:mLab,fmtY:fmtBRLCompact,fmtV:fmtBRLCompact});
+
+    table(rows);
+  }
+
+  ['heTema','heProduto','heArea','heStatus','hePeriodo'].forEach(id=>document.getElementById(id)
+    .addEventListener('change',()=>{shown=100;render();}));
+  let deb; document.getElementById('heBusca').addEventListener('input',()=>{
+    clearTimeout(deb); deb=setTimeout(()=>{shown=100;render();},180);});
+  document.getElementById('he-clear').addEventListener('click',()=>{
+    ['heTema','heProduto','heArea','heStatus','hePeriodo'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('heBusca').value=''; shown=100; render();});
+  document.querySelectorAll('#he-dt th').forEach(th=>th.addEventListener('click',()=>{
+    const k=th.dataset.s;
+    if(k===sortKey) sortDir*=-1; else {sortKey=k; sortDir=k==='valor'?-1:1;}
+    render();}));
+  document.getElementById('he-more').addEventListener('click',()=>{shown+=100;render();});
+  document.getElementById('he-csv').addEventListener('click',()=>{
+    const rows=current();
+    const cols=['key','summary','temaDerivado','produtoDerivado','tipoDerivado','areaFalha','status','created','encerradoEm','valor'];
+    const head=['Chave','Resumo','Tema','Produto','Natureza','Area identificadora','Status','Criado','Encerrado','Valor R$'];
+    const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    const csv='﻿'+[head.join(';'),...rows.map(r=>cols.map(c=>q(c==='valor'?String(r[c]).replace('.',','):r[c])).join(';'))].join('\r\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    a.download='sdprej-encerrados-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();});
+
+  return {render};
+})();
+
+
 /* ===================== view switching ===================== */
 let currentView='temas';
 const VIEWS={temas:{sec:'view-temas',tab:'tab-temas',ger:()=>DT.geradoEm,r:()=>ViewTemas.render()},
              gdis :{sec:'view-gdis', tab:'tab-gdis', ger:()=>GD.geradoEm,r:()=>ViewGdis.render()},
              ana  :{sec:'view-ana',  tab:'tab-ana',  ger:()=>DA.geradoEm,r:()=>ViewAna.render()},
-             rel  :{sec:'view-rel',  tab:'tab-rel',  ger:()=>GD.geradoEm,r:()=>ViewRel.render()}};
+             rel  :{sec:'view-rel',  tab:'tab-rel',  ger:()=>GD.geradoEm,r:()=>ViewRel.render()},
+             he   :{sec:'view-he',   tab:'tab-he',   ger:()=>HE.geradoEm,r:()=>ViewHE.render()}};
 function show(v){
   currentView=v;
   for(const k in VIEWS){

@@ -95,6 +95,48 @@ function tema(resumo) {
   return TEMA.OUTROS;
 }
 
+/* ---------------------------------------------------------- produto ------- */
+
+/**
+ * Tipo de produto (aereo, ingresso, hospedagem...). Nao existe campo no Jira
+ * para isto — e inferencia sobre o resumo, no mesmo espirito de tema(): a
+ * palavra-chave explicita vence antes do padrao de localizador, porque um
+ * resumo "INGRESSO DISNEY ORLANDO - LOC 4958486" tem "LOC" (que por si so
+ * sugeriria hospedagem), mas a palavra INGRESSO decide primeiro.
+ *
+ * O padrao de localizador so entra como desempate quando nao ha
+ * palavra-chave: RES.../4000.../211... sao sistemas de reserva de hotel
+ * (Omnibees/Trend/SIG), e um codigo de 6 letras/numeros no comeco do resumo
+ * e tipicamente localizador GDS — PNR de aereo.
+ */
+const PRODUTO = {
+  HOSPEDAGEM: 'Hospedagem',
+  AEREO:      'Aéreo',
+  INGRESSO:   'Ingresso / Atração',
+  PACOTE:     'Pacote',
+  CARRO:      'Locação de veículo',
+  NAO_IDENT:  'Não identificado',
+};
+
+const REGRAS_PRODUTO = [
+  [/INGRESSO|DISNEY|UNIVERSAL|PARQUE|ATRA[CÇ]AO|TICKET/, PRODUTO.INGRESSO],
+  [/\bAEREO\b|\bVOO\b|PASSAGEM AEREA|\bLATAM\b|\bGOL\b|\bAZUL\b|\bTAP\b/, PRODUTO.AEREO],
+  [/PACOTE/,                                              PRODUTO.PACOTE],
+  [/LOCADORA|ALUGUEL DE VEICULO|RENT.?A.?CAR|\bCARRO\b/,  PRODUTO.CARRO],
+  [/HOTEL|HOSPEDAGEM|RESORT|POUSADA/,                     PRODUTO.HOSPEDAGEM],
+  /* sem palavra-chave: desempata pelo padrao de localizador, igual a tema() */
+  [/RES\d{6}-\d+/,            PRODUTO.HOSPEDAGEM],   // Omnibees
+  [/^4000\d{6}/,              PRODUTO.HOSPEDAGEM],   // Trend
+  [/211\d{7}/,                PRODUTO.HOSPEDAGEM],   // SIG
+  [/^[A-Z0-9]{6}\s*[-/]/,     PRODUTO.AEREO],         // localizador GDS = PNR aereo
+];
+
+function produto(resumo) {
+  const s = normaliza(resumo);
+  for (const [re, rotulo] of REGRAS_PRODUTO) if (re.test(s)) return rotulo;
+  return PRODUTO.NAO_IDENT;
+}
+
 /* ------------------------------------------------------------ aging ------- */
 
 const FAIXAS = [
@@ -222,9 +264,50 @@ const CLASSE = {
   nf: 'sem', oth: 'sem', txt: 'sem', vaz: 'sem',
 };
 
+/* -------------------------------------------- tecnico vs nao-tecnico ----- */
+
+/**
+ * PROPOSTA de classificacao, validada com o dono do produto (Anderson) em
+ * 2026 — nao e extraida de nenhum campo do Jira, e uma tabela de negocio
+ * revisavel. Separa falha de SISTEMA/INTEGRACAO (o SDPREJ nasceu porque algo
+ * nao conversou) de PROCESSO/DECISAO HUMANA (o sistema funcionou, alguem
+ * decidiu, errou ou fraudou).
+ *
+ * Cancelamento sem integracao fica em AMBIGUO de proposito: o rotulo sugere
+ * falha tecnica, mas o gatilho de origem pode ter sido uma decisao comercial
+ * de cancelar — o proprio Anderson confirmou que isso exige analise caso a
+ * caso, entao a regra nao forca nem tecnico nem nao-tecnico.
+ */
+const TIPO = {
+  TECNICO:     'Falha técnica (sistema/integração)',
+  NAO_TECNICO: 'Processo / decisão humana',
+  AMBIGUO:     'Ambíguo (requer análise caso a caso)',
+  OUTROS:      'Não classificado',
+};
+
+const TEMA_TIPO = {
+  [TEMA.ORFA]:      TIPO.TECNICO,
+  [TEMA.REACOMODA]: TIPO.NAO_TECNICO,
+  [TEMA.REMARCA]:   TIPO.NAO_TECNICO,
+  [TEMA.FRAUDE]:    TIPO.NAO_TECNICO,
+  [TEMA.CANCELA]:   TIPO.AMBIGUO,
+  [TEMA.DIVERG]:    TIPO.NAO_TECNICO,
+  [TEMA.DUPLIC]:    TIPO.TECNICO,
+  [TEMA.GED]:       TIPO.TECNICO,
+  [TEMA.NOSHOW]:    TIPO.NAO_TECNICO,
+  [TEMA.REEMBOLSO]: TIPO.NAO_TECNICO,
+  [TEMA.OMNIBEES]:  TIPO.TECNICO,
+  [TEMA.TREND]:     TIPO.TECNICO,
+  [TEMA.SIG]:       TIPO.TECNICO,
+  [TEMA.GDS]:       TIPO.TECNICO,
+  [TEMA.OUTROS]:    TIPO.OUTROS,
+};
+
+const classificaTemaTipo = tema => TEMA_TIPO[tema] || TIPO.OUTROS;
+
 module.exports = {
-  CAMPO, TEMA, FAIXAS_ORDEM, CLASSE,
-  normaliza, tema, faixaAging, valor, valorDe, limpaArea,
+  CAMPO, TEMA, FAIXAS_ORDEM, CLASSE, PRODUTO, TIPO,
+  normaliza, tema, faixaAging, valor, valorDe, limpaArea, produto,
   diasAberto, soData, mes, carimbo,
-  classificaOcorrencia, baldeStatus,
+  classificaOcorrencia, baldeStatus, classificaTemaTipo,
 };

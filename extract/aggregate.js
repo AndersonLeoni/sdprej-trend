@@ -135,6 +135,7 @@ const LIMITE = {
   areaFalha: 8,
   fornecedor: 12,
   cliente: 12,
+  produto: 8,
 };
 
 module.exports = {

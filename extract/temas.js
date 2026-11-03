@@ -32,6 +32,8 @@ async function montar(cfg, agora = new Date()) {
       created: D.soData(f.created),
       diasAberto: D.diasAberto(f.created, agora.getTime()),
       temaDerivado: D.tema(f.summary),
+      produtoDerivado: D.produto(f.summary),
+      tipoDerivado: D.classificaTemaTipo(D.tema(f.summary)),
       /* areaFalha fica com o sufixo " - prejuizo" AQUI de proposito: e o nome
          do campo do Jira e o usuario reconhece assim na tabela. Na visao de
          analistas, onde a area aparece em troca de area ("de X para Y"), o
@@ -66,6 +68,8 @@ async function montar(cfg, agora = new Date()) {
     },
     /* ranking: colapsa no limite de cada agregacao */
     temas:      A.agregar(lista, i => i.temaDerivado, val, A.LIMITE.temas),
+    produto:    A.agregar(lista, i => i.produtoDerivado, val, A.LIMITE.produto),
+    tipos:      A.agregar(lista, i => i.tipoDerivado, val, null),
     problema:   A.agregar(lista, i => i._problema,    val, A.LIMITE.problema),
     falha:      A.agregar(lista, i => i.falha,        val, A.LIMITE.falha),
     areaFalha:  A.agregar(lista, i => i.areaFalha,    val, A.LIMITE.areaFalha),

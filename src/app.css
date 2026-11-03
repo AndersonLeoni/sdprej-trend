@@ -116,6 +116,11 @@ select:focus-visible,input:focus-visible,button:focus-visible,a:focus-visible{ou
 .card .cs{font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5}
 .card .cs b{color:var(--text-primary)}
 .empty{font-size:13px;color:var(--muted);padding:28px 0;text-align:center}
+.card summary{cursor:pointer;list-style:none;margin-bottom:4px}
+.card summary::-webkit-details-marker{display:none}
+.card summary h2{display:inline}
+.card details[open] summary{margin-bottom:4px}
+.card details .cs{margin-top:10px}
 
 .legend{display:flex;flex-wrap:wrap;gap:15px;margin-bottom:12px}
 .legend span{font-size:11.5px;color:var(--text-secondary);display:flex;align-items:center;gap:6px}

@@ -7,11 +7,13 @@
  * 1. Ela cobre o universo INTEIRO (1.513), nao uma etapa. E a visao que
  *    responde "este prejuizo tem chamado de TI, e em que pe ele esta".
  *
- * 2. O payload e COLUNAR, nao uma lista de objetos. 1.513 objetos com oito
- *    chaves nomeadas custariam ~180 KB so de nome de campo repetido; com
- *    dicionario de strings e array posicional o mesmo dado cabe em 67 KB.
- *    O formato e: rows[i] = [keyNum, stIdx, temaIdx, valor, dias, ocorrencia,
- *    balde, gstsIdx], com stIdx/temaIdx/gstsIdx apontando para sts/temas/gsts.
+ * 2. O payload e COLUNAR, nao uma lista de objetos. 1.513 objetos com dez
+ *    chaves nomeadas custariam bem mais so de nome de campo repetido; com
+ *    dicionario de strings e array posicional o mesmo dado cabe num arquivo
+ *    muito menor.
+ *    O formato e: rows[i] = [keyNum, stIdx, temaIdx, prodIdx, valor, dias,
+ *    mes, ocorrencia, balde, gstsIdx], com stIdx/temaIdx/prodIdx/gstsIdx
+ *    apontando para sts/temas/prods/gsts.
  */
 
 const jira = require('./jira');
@@ -49,8 +51,10 @@ async function montar(cfg, agora = new Date()) {
       key: it.key,
       status: D.valorDe(f.status),
       tema: D.tema(f.summary),
+      produto: D.produto(f.summary),
       valor: A.arredonda(D.valor(f)),
       dias: D.diasAberto(f.created, agora.getTime()),
+      mes: D.mes(f.created),
       bruto,
       tipo: D.classificaOcorrencia(bruto),
     };
@@ -73,8 +77,14 @@ async function montar(cfg, agora = new Date()) {
   /* --- 2a passada: monta as linhas colunares ----------------------------- */
   const sts = dicionario();
   const temas = dicionario();
+  const prods = dicionario();
   const gsts = dicionario();
 
+  /* Esquema de rows[i], nesta ordem:
+       [keyNum, stIdx, temaIdx, prodIdx, valor, dias, mes, bruto, balde, gstsIdx]
+     Colunas produto/mes foram acrescentadas depois do lancamento original
+     (que tinha so 8 colunas) — verify.js e a montagem de GI em src/app.js leem
+     por indice e precisam ser atualizados juntos quando este esquema mudar. */
   const rows = base.map(r => {
     /* O status do GDIS so existe quando ha chave valida E ela foi encontrada.
        Quando a chave e valida mas nao existe mais, o balde e 'nf' — perder o
@@ -85,8 +95,10 @@ async function montar(cfg, agora = new Date()) {
       Number(r.key.split('-')[1]),   // so o numero: o prefixo SDPREJ- e igual em 1.513 linhas
       sts.id(r.status),
       temas.id(r.tema),
+      prods.id(r.produto),
       r.valor,
       r.dias,
+      r.mes,
       r.bruto,                        // texto CRU, inclusive o que nao e chave
       balde,
       gsts.id(gs),                    // -1 quando nao ha status de GDIS
@@ -97,6 +109,7 @@ async function montar(cfg, agora = new Date()) {
     geradoEm: D.carimbo(agora),
     sts: sts.lista,
     temas: temas.lista,
+    prods: prods.lista,
     gsts: gsts.lista,
     rows,
   };

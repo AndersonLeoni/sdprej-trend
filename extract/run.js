@@ -24,9 +24,10 @@ const RAIZ = path.join(__dirname, '..');
 const DADOS = path.join(RAIZ, 'data');
 
 const VISOES = {
-  temas:     { arq: 'temas.json',     mod: './temas',     rotulo: 'visao por tema' },
-  analistas: { arq: 'analistas.json', mod: './analistas', rotulo: 'visao por analista' },
-  gdis:      { arq: 'gdis.json',      mod: './gdis',      rotulo: 'vinculo com GDIS' },
+  temas:      { arq: 'temas.json',      mod: './temas',      rotulo: 'visao por tema' },
+  analistas:  { arq: 'analistas.json',  mod: './analistas',  rotulo: 'visao por analista' },
+  gdis:       { arq: 'gdis.json',       mod: './gdis',       rotulo: 'vinculo com GDIS' },
+  encerrados: { arq: 'encerrados.json', mod: './encerrados', rotulo: 'historico encerrado' },
   // problemas: desativado — será implementado pós-férias com lógica de app.js
 };
 

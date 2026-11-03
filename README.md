@@ -4,13 +4,21 @@ Painel de acompanhamento dos itens de prejuízo do projeto **SDPREJ** no Jira da
 O entregável é **um arquivo HTML único e autocontido**, que abre offline por cópia simples,
 sem servidor e sem dependência externa. Este repositório guarda as peças; o `build.js` monta.
 
-Três visões sobre o mesmo universo de 1.513 chamados (o filtro salvo `10478`):
+Cinco visões. As quatro primeiras compartilham o mesmo universo de backlog ativo — o filtro salvo
+`10478` (~1.565 chamados, só status em aberto); a quinta é um universo próprio, complementar:
 
 | Visão | Recorte | Responde |
 |---|---|---|
 | **Por tema** | a fila de `análise área responsável` | onde o prejuízo se concentra e o que está velho |
 | **Por analista** | histórico (changelog) do universo inteiro | quem analisou o quê, e o que está parado na conferência |
 | **Vínculo com GDIS** | universo inteiro | este prejuízo tem chamado de TI, e em que pé ele está |
+| **Ciclo de correção** | reagregação do payload de GDIS, por problema | de aberto a corrigido, quanto prejuízo cada fase ainda segura |
+| **Histórico encerrado** | mesmo projeto/tipo, `statusCategory = Done` (~4.454) | o que já foi resolvido/baixado — fora dos KPIs do backlog ativo de propósito |
+
+O filtro `10478` exclui por definição qualquer status encerrado (confirmado lendo a JQL completa do
+filtro pela API) — não é um corte de data, é de status. Por isso o histórico de anos anteriores
+(inclusive casos de 2020 e antes) só aparece na visão **Histórico encerrado**, nunca nas outras quatro:
+somar valor de um caso já resolvido ao "prejuízo em aberto" distorceria a leitura da gerência.
 
 ## ⚠️ O que não pode ser comitado
 
@@ -74,7 +82,7 @@ issuer certificate`. Só o schannel enxerga o repositório de certificados do Wi
 ```
 run-all.cmd                  extrai, monta e confere
 node extract/run.js          só extrai       -> data/*.json
-node extract/run.js temas    só uma visão (a de changelog é a demorada, ~40 s)
+node extract/run.js temas    só uma visão (a de changelog é a demorada, ~40 s; a de encerrados tem ~4.500 chamados, ~25 s)
 node build.js                só monta        -> dist/SDPREJ_Painel.html
 node verify.js               só confere      (não fala com o Jira)
 ```
@@ -102,16 +110,17 @@ código muda.
 ## Estrutura
 
 ```
-src/template.html      cabeçalho + marcação das 3 visões + marcadores @@...@@
+src/template.html      cabeçalho + marcação das 5 visões + marcadores @@...@@
 src/app.css            estilo
 src/app.js             render, filtros, ordenação, exportação CSV
 extract/jira.js        transporte: auth, paginação, retentativa em 429/5xx
-extract/derive.js      regras de derivação (tema, aging, valor, área, baldes de GDIS)
+extract/derive.js      regras de derivação (tema, produto, tipo, aging, valor, área, baldes de GDIS)
 extract/aggregate.js   agrupamento, top-N com "Outros", KPIs
 extract/temas.js       monta o payload DT
 extract/analistas.js   monta o payload DA (changelog)
 extract/gdis.js        monta o payload GD (colunar)
-extract/run.js         orquestra os três        -> data/*.json
+extract/encerrados.js  monta o payload HE (universo próprio, statusCategory = Done)
+extract/run.js         orquestra os quatro      -> data/*.json
 build.js               junta tudo               -> dist/SDPREJ_Painel.html
 verify.js              recalcula e confere o que está em data/
 data/                  payloads          (IGNORADO pelo git)
