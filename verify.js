@@ -71,6 +71,18 @@ function verificaTemas(DT) {
       .forEach(([k, n]) => console.log('          ' + String(n).padStart(4) + 'x  ' + k));
   }
 
+  /* Etapa: o recorte e exatamente as 3 etapas pedidas. Uma etapa fora da lista
+     significa que o JQL ou o nome do status no Jira mudou. */
+  const etapasEsperadas = new Set(require('./extract/temas').ETAPAS.map(e => e.toLowerCase()));
+  const porEtapa = {};
+  it.forEach(i => { porEtapa[i.status] = (porEtapa[i.status] || 0) + 1; });
+  const fora = Object.keys(porEtapa).filter(s => !etapasEsperadas.has(String(s).toLowerCase()));
+  fora.length
+    ? falha('etapa fora do recorte esperado: ' + fora.join(', '))
+    : ok('etapas: ' + Object.entries(porEtapa).map(([s, n]) => s + ' ' + n).join(' · '));
+  const faltam = [...etapasEsperadas].filter(e => !Object.keys(porEtapa).some(s => s.toLowerCase() === e));
+  if (faltam.length) aviso('nenhum chamado em: ' + faltam.join(', '));
+
   /* Produto recalculado do resumo: mesma natureza de tema, mesmo aviso. Como
      e inferencia nova, vale reportar quantos casos caem no fallback — se for
      uma fracao grande, as regras precisam de mais palavra-chave. */

@@ -37,8 +37,9 @@
 <div class="hdr">
   <h1>Prejuízo TI por tema</h1>
   <div class="lead">
-    Filtro <b>TI SDPREJ - GERAL</b> restrito a <b>status = análise área responsável</b> — os chamados de
-    prejuízo/não conformidade que ainda aguardam parecer da TI.
+    Filtro <b>TI SDPREJ - GERAL</b> nas três etapas em que o chamado está com o time de TI:
+    <b>análise área responsável</b>, <b>Aprovação diretoria</b> e <b>Conferência supervisão/gerência</b>.
+    Com o filtro <b>Etapa</b> em “Todas”, os números somam as três.
   </div>
 </div>
 
@@ -69,6 +70,7 @@
       <button type="button" data-m="valor" aria-pressed="false">Valor R$</button>
     </div>
   </div>
+  <div><label for="fEtapa">Etapa</label><select id="fEtapa"><option value="">Todas as etapas</option></select></div>
   <div class="sp"></div>
   <div><button class="btn" id="t-clear">Limpar filtros</button></div>
 </div>
@@ -153,6 +155,7 @@
           <th data-s="key">Chave<span class="ar">↕</span></th>
           <th data-s="summary">Resumo<span class="ar">↕</span></th>
           <th data-s="temaDerivado">Tema<span class="ar">↕</span></th>
+          <th data-s="status">Etapa<span class="ar">↕</span></th>
           <th data-s="areaFalha">Área<span class="ar">↕</span></th>
           <th data-s="fornecedor">Fornecedor / hotel<span class="ar">↕</span></th>
           <th data-s="created">Criado<span class="ar">↕</span></th>
@@ -172,7 +175,7 @@
 </div>
 
 <footer>
-  Fonte: Jira Cloud CVC Corp &middot; <code>filter in ("10478") AND project = SDPREJ AND status = "análise área responsável"</code><br>
+  Fonte: Jira Cloud CVC Corp &middot; <code>filter in ("10478") AND project = SDPREJ AND status in ("análise área responsável", "Aprovação diretoria", "Conferência supervisão/gerência")</code><br>
   <b>Tema</b> é derivado do padrão do resumo do chamado, porque o campo nativo <em>Problema</em> concentra ~95% dos
   registros em “Sistema XML - Integração” e não discrimina. <b>Valor</b> usa <em>Prejuízo após Reversão</em>, com
   fallback em <em>Prejuízo inicial</em>.<br>

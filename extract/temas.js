@@ -2,8 +2,11 @@
 /**
  * temas.js — monta o payload DT (visao por tema).
  *
- * Recorte: a fila de "analise area responsavel" dentro do universo do filtro.
- * Uma consulta so; as oito agregacoes saem todas de issues[], nao de consultas
+ * Recorte: as tres etapas em que o chamado esta com o time de TI, dentro do
+ * universo do filtro (pedido da diretoria, 2026-11-05). Antes era so
+ * "analise area responsavel". Cada chamado carrega a propria etapa em
+ * `status`, e o painel filtra por ela no navegador.
+ * Uma consulta so; as agregacoes saem todas de issues[], nao de consultas
  * separadas — e por isso que todas fecham exatamente no mesmo total.
  */
 
@@ -11,7 +14,9 @@ const jira = require('./jira');
 const D = require('./derive');
 const A = require('./aggregate');
 
-const ETAPA = 'análise área responsável';
+/* Na ordem do fluxo. O nome exato vem do Jira; o JQL nao diferencia caixa. */
+const ETAPAS = ['análise área responsável', 'Aprovação diretoria', 'Conferência supervisão/gerência'];
+const ETAPA = ETAPAS[0];
 
 const CAMPOS = [
   'key', 'summary', 'created', 'status',
@@ -20,7 +25,7 @@ const CAMPOS = [
 ];
 
 async function montar(cfg, agora = new Date()) {
-  const jql = `${cfg.universo} AND status = "${ETAPA}"`;
+  const jql = `${cfg.universo} AND status in (${ETAPAS.map(e => `"${e}"`).join(', ')})`;
   const issues = await jira.buscar(jql, CAMPOS, { rotulo: 'temas' });
 
   /* --- uma passada: tudo o que o painel mostra por chamado --------------- */
@@ -29,6 +34,7 @@ async function montar(cfg, agora = new Date()) {
     return {
       key: it.key,
       summary: f.summary || '',
+      status: D.valorDe(f.status),
       created: D.soData(f.created),
       diasAberto: D.diasAberto(f.created, agora.getTime()),
       temaDerivado: D.tema(f.summary),
@@ -83,4 +89,4 @@ async function montar(cfg, agora = new Date()) {
   };
 }
 
-module.exports = { montar, ETAPA, CAMPOS };
+module.exports = { montar, ETAPA, ETAPAS, CAMPOS };

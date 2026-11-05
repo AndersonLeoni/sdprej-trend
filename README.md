@@ -9,7 +9,7 @@ Cinco visões. As quatro primeiras compartilham o mesmo universo de backlog ativ
 
 | Visão | Recorte | Responde |
 |---|---|---|
-| **Por tema** | a fila de `análise área responsável` | onde o prejuízo se concentra e o que está velho |
+| **Por tema** (visão geral) | as 3 etapas com a TI: `análise área responsável`, `Aprovação diretoria`, `Conferência supervisão/gerência` — filtro **Etapa** na tela | onde o prejuízo se concentra e o que está velho |
 | **Por analista** | histórico (changelog) do universo inteiro | quem analisou o quê, e o que está parado na conferência |
 | **Vínculo com GDIS** | universo inteiro | este prejuízo tem chamado de TI, e em que pé ele está |
 | **Ciclo de correção** | reagregação do payload de GDIS, por problema | de aberto a corrigido, quanto prejuízo cada fase ainda segura |

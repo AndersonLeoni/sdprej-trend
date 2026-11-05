@@ -14,7 +14,26 @@ const path = require('path');
 // URL do GitHub Pages — acessível publicamente
 const PAINEL_URL = 'https://AndersonLeoni.github.io/sdprej-trend/';
 
-const DT = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'temas.json'), 'utf8'));
+/* O payload de temas agora cobre 3 etapas (pedido da diretoria para o painel).
+   A pagina do Confluence continua falando so da fila de "analise area
+   responsavel", entao o recorte e refeito aqui — os numeros dela nao mudam. */
+const DT = (() => {
+  const A = require('./extract/aggregate');
+  const bruto = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'temas.json'), 'utf8'));
+  const issues = bruto.issues.filter(i => i.status === 'análise área responsável');
+  const val = i => i.valor;
+  return {
+    ...bruto,
+    issues,
+    kpis: {
+      ...bruto.kpis,
+      total: issues.length,
+      valorTotal: A.soma(issues.map(val)),
+      acima180d: issues.filter(i => i.diasAberto > 180).length,
+    },
+    temas: A.agregar(issues, i => i.temaDerivado, val, A.LIMITE.temas),
+  };
+})();
 const DA = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'analistas.json'), 'utf8'));
 const GD = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'gdis.json'), 'utf8'));
 
@@ -45,17 +64,17 @@ const DE_BALDE = { pen: 'pen', n1: 'n1', n2: 'n2', n3: 'n3', usr: 'usr', res: 'f
 const problemas = (() => {
   const m = new Map();
   for (const r of GD.rows) {
-    const chave = String(r[5] || '').trim();
+    const chave = String(r[7] || '').trim();
     if (!/^GDIS-\d+$/.test(chave)) continue;
     let e = m.get(chave);
     if (!e) {
-      e = { gdis: chave, gstat: r[7] >= 0 ? GD.gsts[r[7]] : '', fase: DE_BALDE[r[6]] || 'nf',
+      e = { gdis: chave, gstat: r[9] >= 0 ? GD.gsts[r[9]] : '', fase: DE_BALDE[r[8]] || 'nf',
             keys: [], qtd: 0, valor: 0, dias: 0, _t: new Map() };
       m.set(chave, e);
     }
     e.keys.push('SDPREJ-' + r[0]);
-    e.qtd++; e.valor += r[3];
-    if (r[4] > e.dias) e.dias = r[4];
+    e.qtd++; e.valor += r[4];
+    if (r[5] > e.dias) e.dias = r[5];
     const t = GD.temas[r[2]];
     e._t.set(t, (e._t.get(t) || 0) + 1);
   }
@@ -233,9 +252,9 @@ ${(() => {
 ${(() => {
   const m = new Map();
   GD.rows.forEach(r => {
-    const label = r[7] >= 0 ? GD.gsts[r[7]] : 'Sem classificação';
+    const label = r[9] >= 0 ? GD.gsts[r[9]] : 'Sem classificação';
     const e = m.get(label) || {n: 0, v: 0};
-    e.n++; e.v += r[3]; m.set(label, e);
+    e.n++; e.v += r[4]; m.set(label, e);
   });
   return [...m.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10)
     .map(([label, e]) => `<tr>
@@ -255,10 +274,10 @@ ${(() => {
 <tr><th>GDIS</th><th>Chamados Vinculados</th><th>Valor Total</th></tr>
 ${(() => {
   const m = new Map();
-  GD.rows.filter(r => /^GDIS-\d+$/.test(r[5] || '')).forEach(r => {
-    const g = r[5];
+  GD.rows.filter(r => /^GDIS-\d+$/.test(r[7] || '')).forEach(r => {
+    const g = r[7];
     const e = m.get(g) || {n: 0, v: 0};
-    e.n++; e.v += r[3]; m.set(g, e);
+    e.n++; e.v += r[4]; m.set(g, e);
   });
   return [...m.entries()]
     .filter(([, e]) => e.n > 1)

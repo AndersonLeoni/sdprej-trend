@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>APOIO Trend · Volumetria e SLA · CVC Corp — Uso interno</title>
+<style>
+@@CSS@@
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="conf">
+  <b>CONFIDENCIAL — USO INTERNO CVC CORP.</b>
+  Contém chaves de chamados e nomes de colaboradores com métricas individuais de atendimento.
+  Não publicar em ambiente aberto, não encaminhar para fora da companhia.
+</div>
+
+<nav class="viewnav">
+  <div class="tabs" role="tablist" aria-label="Visões do painel">
+    <button type="button" role="tab" id="tab-geral" aria-selected="true" aria-controls="view-geral">Visão geral</button>
+    <button type="button" role="tab" id="tab-resp" aria-selected="false" aria-controls="view-resp">Por responsável</button>
+    <button type="button" role="tab" id="tab-sla" aria-selected="false" aria-controls="view-sla">SLA de atendimento</button>
+    <button type="button" role="tab" id="tab-fila" aria-selected="false" aria-controls="view-fila">Fila sem responsável</button>
+  </div>
+  <div class="sp"></div>
+  <span class="chip" id="chipGer"></span>
+  <button class="btn" id="themeBtn" aria-label="Alternar tema claro/escuro">◐ Tema</button>
+</nav>
+
+<div class="controls" role="group" aria-label="Filtros">
+  <div><label for="fJanela">Janela dos indicadores</label>
+    <div class="seg" id="fJanela">
+      <button type="button" data-j="m6" aria-pressed="true">6 meses</button>
+      <button type="button" data-j="m4" aria-pressed="false">4 meses</button>
+      <button type="button" data-j="m2" aria-pressed="false">2 meses</button>
+    </div>
+  </div>
+  <div><label for="fMedida">Medida dos gráficos</label>
+    <div class="seg" id="fMedida">
+      <button type="button" data-m="ambos" aria-pressed="true">Criados x resolvidos</button>
+      <button type="button" data-m="cr" aria-pressed="false">Criados</button>
+      <button type="button" data-m="rs" aria-pressed="false">Resolvidos</button>
+    </div>
+  </div>
+  <div><label for="fTipo">Tipo de chamado</label><select id="fTipo"><option value="">Todos</option></select></div>
+  <div><label for="fResp">Responsável</label><select id="fResp"><option value="">Todos</option></select></div>
+  <div class="sp"></div>
+  <div><button class="btn" id="clear">Limpar filtros</button></div>
+</div>
+
+<!-- ============================ VISÃO GERAL ============================ -->
+<section id="view-geral" role="tabpanel" aria-labelledby="tab-geral">
+<div class="hdr">
+  <h1>Volumetria · APOIO Trend</h1>
+  <div class="lead">
+    Chamados do time Trend nos últimos <b>6, 4 e 2 meses</b>: o que <b>entrou</b> (criado) contra o que <b>saiu</b>
+    (resolvido) no mesmo período. Base dos filtros <b>11295</b> (Análise), <b>11304</b> (Alteração) e
+    <b>11303</b> (Relatórios), sem o corte de status e de responsável.
+  </div>
+</div>
+<div class="kpis" id="g-kpis"></div>
+<div class="grid">
+  <section class="card wide">
+    <h2>Comparativo entre janelas</h2>
+    <div class="cs">As três janelas terminam hoje. Os filtros de tipo e responsável se aplicam; a janela escolhida só destaca os indicadores acima.</div>
+    <div class="tbl"><table class="dt" id="g-cmp"></table></div>
+  </section>
+  <section class="card">
+    <h2>Criados x resolvidos &middot; por janela</h2>
+    <div class="cs">Entrada contra saída em cada janela.</div>
+    <div class="legend" id="lg-jan"></div>
+    <div class="cw" id="ch-jan"></div>
+  </section>
+  <section class="card">
+    <h2>Criados x resolvidos &middot; por mês</h2>
+    <div class="cs">Primeiro e último mês são parciais (a janela começa e termina no meio do mês).</div>
+    <div class="legend" id="lg-mes"></div>
+    <div class="cw" id="ch-mes"></div>
+  </section>
+  <section class="card wide">
+    <h2>Por tipo de chamado</h2>
+    <div class="cs">Janela escolhida, por Request Type. Mostra criados, a menos que a medida seja "Resolvidos".</div>
+    <div class="hbars" id="ch-tipo"></div>
+  </section>
+</div>
+</section>
+
+<!-- ============================ POR RESPONSÁVEL ============================ -->
+<section id="view-resp" role="tabpanel" aria-labelledby="tab-resp" hidden>
+<div class="hdr">
+  <h1>Volumetria por responsável</h1>
+  <div class="lead">
+    Criados e resolvidos por pessoa, nas três janelas lado a lado. O responsável é o <b>atual</b> do chamado, não
+    necessariamente quem atendeu na época — por isso a linha <b>(sem responsável)</b> inclui chamados que voltaram para a fila.
+  </div>
+</div>
+<div class="grid">
+  <section class="card">
+    <h2>Criados &middot; janela escolhida</h2>
+    <div class="hbars" id="r-ch-cr"></div>
+  </section>
+  <section class="card">
+    <h2>Resolvidos &middot; janela escolhida</h2>
+    <div class="hbars" id="r-ch-rs"></div>
+  </section>
+  <section class="card wide">
+    <h2>6, 4 e 2 meses por responsável</h2>
+    <div class="cs">Clique no cabeçalho para ordenar. A coluna de SLA é a 1ª resposta no prazo, sobre os chamados criados na janela.</div>
+    <div class="tbl"><table class="dt" id="r-dt"></table></div>
+  </section>
+</div>
+</section>
+
+<!-- ============================ SLA ============================ -->
+<section id="view-sla" role="tabpanel" aria-labelledby="tab-sla" hidden>
+<div class="hdr">
+  <h1>SLA de atendimento</h1>
+  <div class="lead">
+    <b>1ª resposta no prazo</b> é o indicador principal: está preenchido em praticamente todos os chamados.
+    O SLA de <b>resolução</b> (Time to resolution) só existe em uma fração deles — a cobertura aparece em cada número e
+    deve ser lida como indicativa.
+  </div>
+</div>
+<div class="kpis" id="s-kpis"></div>
+<div class="grid">
+  <section class="card wide">
+    <h2>1ª resposta no prazo &middot; por mês de criação</h2>
+    <div class="cs">Percentual dos chamados criados em cada mês que receberam a 1ª resposta dentro do prazo.</div>
+    <div class="cw" id="s-ch-mes"></div>
+  </section>
+  <section class="card">
+    <h2>1ª resposta no prazo &middot; por responsável</h2>
+    <div class="cs">Janela escolhida. Só aparecem responsáveis com 10 chamados ou mais na janela.</div>
+    <div class="hbars" id="s-ch-resp"></div>
+  </section>
+  <section class="card">
+    <h2>Por tipo de chamado</h2>
+    <div class="cs">Janela escolhida.</div>
+    <div class="tbl sm"><table class="dt" id="s-dt-tipo"></table></div>
+  </section>
+</div>
+</section>
+
+<!-- ============================ FILA SEM RESPONSÁVEL ============================ -->
+<section id="view-fila" role="tabpanel" aria-labelledby="tab-fila" hidden>
+<div class="hdr">
+  <h1>Fila sem responsável</h1>
+  <div class="lead">
+    Chamados ainda <b>em aberto e sem responsável atribuído</b>, do mais antigo para o mais novo. Respeita o filtro de tipo;
+    ignora janela e responsável.
+  </div>
+</div>
+<div class="kpis" id="f-kpis"></div>
+<div class="grid">
+  <section class="card wide">
+    <h2>Envelhecimento da fila</h2>
+    <div class="cs">Dias desde a abertura. Faixas ordenadas — o tom se intensifica com a idade.</div>
+    <div class="hbars" id="f-ch-age"></div>
+  </section>
+  <section class="card wide">
+    <h2>Chamados na fila</h2>
+    <div class="cs">Clique no cabeçalho para reordenar, na chave para abrir no Jira.</div>
+    <div class="tbl"><table class="dt" id="f-dt"></table></div>
+    <div class="tfoot">
+      <span id="f-count"></span>
+      <span><button class="btn" id="f-more">Mostrar mais 100</button>
+        <button class="btn" id="f-csv">Baixar CSV</button></span>
+    </div>
+  </section>
+</div>
+</section>
+
+<footer id="foot"></footer>
+
+</div>
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+@@DATA@@
+@@JS@@
+</script>
+</body>
+</html>

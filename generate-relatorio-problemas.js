@@ -39,23 +39,23 @@ const EM_CORRECAO = ['n1', 'n2', 'n3'];
 /* --- agrupa por GDIS distinto ------------------------------------------- */
 const porProblema = new Map();
 for (const r of GD.rows) {
-  const chave = String(r[5] || '').trim();
+  const chave = String(r[7] || '').trim();
   if (!/^GDIS-\d+$/.test(chave)) continue;          // só vínculo rastreável
 
   let e = porProblema.get(chave);
   if (!e) {
     e = {
       gdis: chave,
-      gstat: r[7] >= 0 ? GD.gsts[r[7]] : '',
-      fase: BK[r[6]] || 'nf',
+      gstat: r[9] >= 0 ? GD.gsts[r[9]] : '',
+      fase: BK[r[8]] || 'nf',
       keys: [], qtd: 0, valor: 0, dias: 0, temas: new Map(),
     };
     porProblema.set(chave, e);
   }
   e.keys.push('SDPREJ-' + r[0]);
   e.qtd++;
-  e.valor += r[3];
-  if (r[4] > e.dias) e.dias = r[4];
+  e.valor += r[4];
+  if (r[5] > e.dias) e.dias = r[5];
   const tema = GD.temas[r[2]];
   e.temas.set(tema, (e.temas.get(tema) || 0) + 1);
 }

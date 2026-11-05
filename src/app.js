@@ -123,6 +123,11 @@ const ViewTemas=(function(){
   }
   fill('fTema',uniq('temaDerivado')); fill('fArea',uniq('areaFalha')); fill('fAging',AG);
   fill('fProduto',uniq('produtoDerivado'));
+  /* etapas na ordem do fluxo, nao em ordem alfabetica; uma etapa nova que o
+     Jira passe a devolver entra no fim em vez de sumir do filtro */
+  const ETAPAS_FLUXO=['análise área responsável','aprovação diretoria','conferência supervisão/gerência'];
+  const etapaOrd=s=>{const k=ETAPAS_FLUXO.indexOf(String(s).toLowerCase());return k<0?ETAPAS_FLUXO.length:k;};
+  fill('fEtapa',uniq('status').sort((a,b)=>etapaOrd(a)-etapaOrd(b)||a.localeCompare(b,'pt-BR')));
 
   /* periodo: mesmo padrao de fPeriodo/cutoff() da visao Analistas, com id
      proprio porque as 4 secoes ficam todas no DOM ao mesmo tempo. */
@@ -137,9 +142,11 @@ const ViewTemas=(function(){
           g=document.getElementById('fAging').value,
           gd=document.getElementById('fGdis').value,
           p=document.getElementById('fProduto').value,
+          et=document.getElementById('fEtapa').value,
           cut=tcutoff(),
           q=document.getElementById('fBusca').value.trim().toLowerCase();
     return I.filter(i=>{
+      if(et&&(i.status||'Não informado')!==et) return false;
       if(t&&(i.temaDerivado||'Não informado')!==t) return false;
       if(a&&(i.areaFalha||'Não informado')!==a) return false;
       if(g&&i.aging!==g) return false;
@@ -236,6 +243,7 @@ const ViewTemas=(function(){
         <td><a href="${JIRA}${esc(r.key)}" target="_blank" rel="noopener">${esc(r.key)}</a></td>
         <td class="sum" title="${esc(r.summary)}">${esc(r.summary)}</td>
         <td><span class="pill">${esc(r.temaDerivado)}</span></td>
+        <td style="color:var(--text-secondary)">${esc(r.status||'—')}</td>
         <td style="color:var(--text-secondary)">${esc((r.areaFalha||'').replace(/\s*-\s*(prejuízo|Prejuízo)\s*$/,''))}</td>
         <td class="sum" title="${esc(r.fornecedor||'')}">${esc(r.fornecedor||'—')}</td>
         <td class="num" style="color:var(--text-secondary)">${esc(r.created)}</td>
@@ -262,7 +270,7 @@ const ViewTemas=(function(){
     const med=tot?vs[Math.floor(tot/2)]:0, mx=tot?vs[vs.length-1]:0;
     document.getElementById('t-kpis').innerHTML=`
       <div class="tile"><div class="k">Chamados no recorte</div><div class="v">${nfInt.format(tot)}</div>
-        <div class="n">aguardando parecer da TI</div></div>
+        <div class="n">${document.getElementById('fEtapa').value?'na etapa '+esc(document.getElementById('fEtapa').value):'somando as 3 etapas com a TI'}</div></div>
       <div class="tile"><div class="k">Prejuízo reclamado</div><div class="v">${nfBRL.format(val)}</div>
         <div class="n">soma de Prejuízo após Reversão</div></div>
       <div class="tile alert"><div class="k">Acima de 180 dias</div><div class="v">${nfInt.format(old)}</div>
@@ -336,12 +344,12 @@ const ViewTemas=(function(){
     heat(rows); table(rows);
   }
 
-  ['fTema','fArea','fAging','fGdis','fProduto','tPeriodo'].forEach(id=>document.getElementById(id)
+  ['fTema','fArea','fAging','fGdis','fProduto','tPeriodo','fEtapa'].forEach(id=>document.getElementById(id)
     .addEventListener('change',()=>{shown=100;render();}));
   let deb; document.getElementById('fBusca').addEventListener('input',()=>{
     clearTimeout(deb); deb=setTimeout(()=>{shown=100;render();},180);});
   document.getElementById('t-clear').addEventListener('click',()=>{
-    ['fTema','fArea','fAging','fGdis','fProduto','tPeriodo'].forEach(id=>document.getElementById(id).value='');
+    ['fTema','fArea','fAging','fGdis','fProduto','tPeriodo','fEtapa'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('fBusca').value=''; shown=100; render();});
   document.getElementById('segMetric').addEventListener('click',e=>{
     const b=e.target.closest('button[data-m]'); if(!b) return;
@@ -355,8 +363,8 @@ const ViewTemas=(function(){
   document.getElementById('t-more').addEventListener('click',()=>{shown+=100;render();});
   document.getElementById('t-csv').addEventListener('click',()=>{
     const rows=current();
-    const cols=['key','summary','temaDerivado','produtoDerivado','tipoDerivado','areaFalha','falha','fornecedor','cliente','created','diasAberto','valor','ocorrencia','gkey','gstat','gcls'];
-    const head=['Chave','Resumo','Tema','Produto','Natureza','Area identificadora','Falha','Fornecedor/Hotel','Cliente','Criado','Dias aberto','Valor R$','Ocorrencia','GDIS','Status do GDIS','Situacao do GDIS'];
+    const cols=['key','summary','status','temaDerivado','produtoDerivado','tipoDerivado','areaFalha','falha','fornecedor','cliente','created','diasAberto','valor','ocorrencia','gkey','gstat','gcls'];
+    const head=['Chave','Resumo','Etapa','Tema','Produto','Natureza','Area identificadora','Falha','Fornecedor/Hotel','Cliente','Criado','Dias aberto','Valor R$','Ocorrencia','GDIS','Status do GDIS','Situacao do GDIS'];
     const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
     const csv='﻿'+[head.join(';'),...rows.map(r=>cols.map(c=>q(c==='valor'?String(r[c]).replace('.',','):r[c])).join(';'))].join('\r\n');
     const a=document.createElement('a');
