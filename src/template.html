@@ -13,6 +13,10 @@
 <body>
 <div class="app">
 <aside class="side">
+  <button type="button" class="side-toggle" id="sideToggle" aria-expanded="true" aria-controls="sideNav"
+    aria-label="Recolher menu" title="Recolher menu">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+  </button>
   <div class="side-brand">
     <div class="av" aria-hidden="true">SD</div>
     <div>
@@ -21,7 +25,7 @@
       <div class="tags"><span class="tag y">Trend Operadora</span><span class="tag">CVC Corp</span></div>
     </div>
   </div>
-  <nav class="side-nav" role="tablist" aria-label="Visões do painel" aria-orientation="vertical">
+  <nav class="side-nav" id="sideNav" role="tablist" aria-label="Visões do painel" aria-orientation="vertical">
     <button type="button" role="tab" id="tab-temas" aria-selected="true" aria-controls="view-temas">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
       <span>Visão geral por tema</span></button>
@@ -39,8 +43,11 @@
       <span>Histórico encerrado</span></button>
   </nav>
   <div class="side-foot">
+    <span class="side-clock" id="sideClock" role="img" aria-label="Data da extração">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    </span>
     <span class="chip" id="chipGer"></span>
-    <button class="btn" id="themeBtn" aria-label="Alternar tema claro/escuro">◐ Tema</button>
+    <button class="btn" id="themeBtn" aria-label="Alternar tema claro/escuro" title="Alternar tema claro/escuro">◐<span class="lbl"> Tema</span></button>
   </div>
 </aside>
 <main class="main">

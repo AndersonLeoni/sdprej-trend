@@ -386,4 +386,34 @@ svg path.bar{transform-box:fill-box;transform-origin:bottom;animation:growY .8s 
   .side-foot{display:flex;align-items:center;padding:12px 0 0;margin-top:0}
   .main .wrap{padding:18px 14px 48px}
 }
+/* menu recolhivel: faixa so de icones (>= 981px; no celular o menu ja e uma barra) */
+.side-toggle{position:absolute;top:12px;right:10px;width:30px;height:30px;border-radius:50%;cursor:pointer;
+  display:grid;place-items:center;padding:0;color:#fff;background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.28);transition:background .2s,transform .3s}
+.side-toggle:hover{background:rgba(255,255,255,.28)}
+.side-toggle svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.side-toggle:focus-visible{outline:2px solid var(--brand-yellow);outline-offset:2px}
+.side-clock{display:none;place-items:center;height:36px;color:rgba(255,255,255,.85);cursor:help}
+.side-clock svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.app.nt,.app.nt *{transition:none!important}
+@media (min-width:981px){
+  .app{transition:grid-template-columns .3s cubic-bezier(.2,.8,.2,1)}
+  .app.collapsed{grid-template-columns:76px minmax(0,1fr)}
+  .app.collapsed .main .wrap{max-width:1600px}
+  .app.collapsed .side{padding:58px 0 18px 8px}
+  .app.collapsed .side-toggle{right:auto;left:50%;margin-left:-15px;transform:rotate(180deg)}
+  .app.collapsed .side-brand{padding:0 8px 18px 0}
+  .app.collapsed .side-brand .av{width:44px;height:44px;font-size:15px;margin-bottom:0;
+    box-shadow:0 0 0 2px var(--brand-yellow),0 0 0 5px rgba(255,213,0,.22)}
+  .app.collapsed .side-brand .t,.app.collapsed .side-brand .s,.app.collapsed .side-brand .tags{display:none}
+  .app.collapsed .side-nav button{justify-content:center;gap:0;padding:14px 0;border-radius:16px 0 0 16px}
+  .app.collapsed .side-nav button span{display:none}
+  .app.collapsed .side-nav button:hover{transform:none}
+  .app.collapsed .side-foot{padding:16px 8px 0 0}
+  .app.collapsed .side-foot .chip{display:none}
+  .app.collapsed .side-clock{display:grid}
+  .app.collapsed .side-foot .btn{padding:7px 0;text-align:center}
+  .app.collapsed .side-foot .btn .lbl{display:none}
+}
+@media (max-width:980px){.side-toggle{display:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}

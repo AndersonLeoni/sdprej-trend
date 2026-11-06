@@ -1615,6 +1615,40 @@ document.getElementById('chipGer').textContent='Extraído do Jira em '+DT.gerado
   });
 })();
 
+/* ===== menu lateral recolhivel =====
+   A escolha fica guardada no navegador. Ao trocar a largura, dispara um resize
+   depois da animacao: os graficos medem o recipiente, entao se redesenham na
+   largura nova em vez de ficarem esticados. */
+(function(){
+  const app=document.querySelector('.app'), btn=document.getElementById('sideToggle');
+  const clock=document.getElementById('sideClock'), chip=document.getElementById('chipGer');
+  const navBtns=[...document.querySelectorAll('.side-nav button')];
+  const CH='sdprej.menuRecolhido';
+  let fim;
+  function aplicar(col,animar){
+    app.classList.toggle('collapsed',col);
+    btn.setAttribute('aria-expanded',String(!col));
+    const rot=col?'Expandir menu':'Recolher menu';
+    btn.title=rot; btn.setAttribute('aria-label',rot);
+    navBtns.forEach(b=>{ if(col) b.title=b.querySelector('span').textContent; else b.removeAttribute('title'); });
+    clearTimeout(fim);
+    fim=setTimeout(()=>dispatchEvent(new Event('resize')),animar?340:0);
+  }
+  /* o carimbo da extracao some junto com o chip; vira dica do relogio */
+  const espelha=()=>{clock.title=chip.textContent;};
+  new MutationObserver(espelha).observe(chip,{childList:true}); espelha();
+
+  let ini=false; try{ ini=localStorage.getItem(CH)==='1'; }catch(e){}
+  app.classList.add('nt'); aplicar(ini,false);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>app.classList.remove('nt')));
+
+  btn.addEventListener('click',()=>{
+    const col=!app.classList.contains('collapsed');
+    aplicar(col,true);
+    try{ localStorage.setItem(CH,col?'1':'0'); }catch(e){}
+  });
+})();
+
 ViewTemas.render();
 
 addEventListener('resize',()=>{clearTimeout(window.__r);
