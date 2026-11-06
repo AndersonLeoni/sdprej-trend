@@ -262,5 +262,128 @@ footer b{color:var(--text-secondary)}
 @media (max-width:900px){.grid{grid-template-columns:1fr}
   .tlrow,.tlaxis,.cmprow{grid-template-columns:96px 1fr auto}
   .hrow{grid-template-columns:minmax(96px,150px) 1fr auto}}
-@media print{.controls,.btn,.tabs,.viewnav{display:none}.card{break-inside:avoid}
-  .conf{border:1px solid #999}}
+@media print{.controls,.btn,.tabs,.viewnav,.side{display:none}.card{break-inside:avoid}
+  .app{display:block}.conf{border:1px solid #999}}
+
+/* =====================================================================
+   Menu lateral, cartoes de destaque, rosca, area suave e animacao.
+   Tudo ADITIVO: o painel Trend (trend.template.html) reaproveita este
+   arquivo e continua usando .viewnav/.tabs, que seguem como estavam acima.
+   ===================================================================== */
+.app{display:grid;grid-template-columns:272px minmax(0,1fr);min-height:100vh}
+.main{min-width:0}
+.main .wrap{max-width:1380px;padding:26px 30px 64px}
+.main .kpis{grid-template-columns:repeat(auto-fit,minmax(164px,1fr))}
+.main .tile{padding:15px 14px}
+.main .tile .v{font-size:clamp(21px,1.85vw,30px);white-space:nowrap}
+.app>*{min-width:0}
+.side{position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;
+  padding:28px 0 18px 14px;color:var(--on-brandbar);
+  background:linear-gradient(180deg,var(--brandbar) 0%,color-mix(in srgb,var(--brandbar) 72%,#000) 100%)}
+.side-brand{padding:0 16px 24px 4px;text-align:center}
+.side-brand .av{width:66px;height:66px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;
+  font-size:21px;font-weight:800;letter-spacing:.02em;background:rgba(255,255,255,.12);
+  box-shadow:0 0 0 3px var(--brand-yellow),0 0 0 8px rgba(255,213,0,.22)}
+.side-brand .t{font-size:16.5px;font-weight:700;line-height:1.2}
+.side-brand .s{font-size:11px;opacity:.82;margin-top:6px;line-height:1.45}
+.side-brand .tags{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:13px}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--brand-lav);color:var(--brand-indigo);border-radius:999px;padding:4px 10px}
+.tag.y{background:var(--brand-yellow);color:#27292a}
+.side-nav{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.side-nav button{display:flex;align-items:center;gap:13px;width:100%;text-align:left;font:inherit;font-size:13.5px;
+  font-weight:550;color:rgba(255,255,255,.9);background:transparent;border:0;cursor:pointer;
+  padding:14px 14px 14px 20px;border-radius:18px 0 0 18px;position:relative;
+  transition:background .22s,color .22s,transform .22s}
+.side-nav button svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.side-nav button:hover{background:rgba(255,255,255,.12);transform:translateX(4px)}
+.side-nav button[aria-selected=true]{background:var(--plane);color:var(--series-1);font-weight:700;transform:none}
+.side-nav button[aria-selected=true]::before{content:'';position:absolute;left:0;top:11px;bottom:11px;width:4px;
+  border-radius:0 4px 4px 0;background:var(--brand-yellow)}
+.side-nav button:focus-visible{outline:2px solid var(--brand-yellow);outline-offset:-2px}
+.side-foot{margin-top:auto;padding:20px 16px 0 6px;display:grid;gap:10px}
+.side-foot .chip{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);color:#fff;
+  text-align:center;white-space:normal;line-height:1.35}
+.side-foot .btn{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);color:#fff;transition:background .2s}
+.side-foot .btn:hover{background:rgba(255,255,255,.24);border-color:#fff;color:#fff}
+
+/* cartoes de destaque: os dois primeiros KPIs de cada visao (classe posta pelo app.js) */
+.tile{border-radius:18px;transition:transform .25s ease,box-shadow .25s ease}
+.tile:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(0,0,0,.12)}
+.tile.f1,.tile.f2{border-color:transparent}
+.tile.f1{background:linear-gradient(135deg,var(--brand-blue) 0%,#0a4a96 100%)}
+.tile.f2{background:var(--brand-yellow)}
+.tile.f1 .k,.tile.f1 .n,.tile.f1 .v small{color:rgba(255,255,255,.88)}
+.tile.f1 .v{color:#fff}
+.tile.f2 .k,.tile.f2 .n,.tile.f2 .v small{color:rgba(39,41,42,.8)}
+.tile.f2 .v{color:#27292a}
+.tile.f1::before,.tile.f2::before{display:none}
+.tile.f1::after,.tile.f2::after{content:'';position:absolute;right:-28px;bottom:-40px;width:120px;height:120px;
+  border-radius:50%;background:rgba(255,255,255,.13);pointer-events:none}
+.tile.f2::after{background:rgba(255,255,255,.42)}
+.tile.f1>*,.tile.f2>*{position:relative;z-index:1}
+.card{border-radius:20px;transition:box-shadow .3s ease}
+.card:hover{box-shadow:0 14px 34px rgba(0,0,0,.09)}
+.controls{border-radius:18px}
+
+/* barras clicaveis (aplicam o filtro correspondente) */
+.hrow.click{cursor:pointer}
+.hrow.click:hover .hlab{color:var(--text-primary)}
+.hrow.on{background:color-mix(in srgb,var(--series-1) 12%,transparent);box-shadow:inset 3px 0 0 var(--brand-yellow)}
+
+/* rosca */
+.donutw{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+.donutw svg{width:210px;height:210px;flex:none;overflow:visible}
+.donutw .sl{fill:none;stroke-width:26;transition:opacity .2s,stroke-width .2s;
+  animation:sweep 1s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*90ms)}
+.donutw .sl:hover{stroke-width:31}
+.donutw .sl.dim{opacity:.28}
+.donutw .dv{font-size:27px;font-weight:700;fill:var(--text-primary);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.donutw .dk{font-size:11px;fill:var(--muted)}
+.dleg{flex:1;min-width:230px;display:grid;gap:4px}
+.dli{display:grid;grid-template-columns:12px 1fr auto 54px;gap:10px;align-items:center;padding:7px 10px;
+  border-radius:10px;font-size:12.5px;transition:background .2s,opacity .2s}
+.dli i{width:10px;height:10px;border-radius:3px}
+.dli .dn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)}
+.dli b{font-variant-numeric:tabular-nums}
+.dli em{font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+.dli:hover{background:color-mix(in srgb,var(--series-1) 8%,transparent)}
+.dli.dim{opacity:.4}
+.dli.click{cursor:pointer}
+.dli.on{box-shadow:inset 3px 0 0 var(--brand-yellow)}
+
+/* movimento */
+@keyframes viewIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes cardIn{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes growX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sweep{from{stroke-dasharray:0 1000}}
+@keyframes draw{from{stroke-dasharray:1;stroke-dashoffset:1}to{stroke-dasharray:1;stroke-dashoffset:0}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+section[role=tabpanel]:not([hidden]){animation:viewIn .4s cubic-bezier(.2,.8,.2,1)}
+.grid>.card{animation:cardIn .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--ci,0)*55ms)}
+.grid>.card:nth-child(2){--ci:1}.grid>.card:nth-child(3){--ci:2}.grid>.card:nth-child(4){--ci:3}
+.grid>.card:nth-child(5){--ci:4}.grid>.card:nth-child(6){--ci:5}.grid>.card:nth-child(7){--ci:6}
+.grid>.card:nth-child(8){--ci:7}.grid>.card:nth-child(9){--ci:8}.grid>.card:nth-child(n+10){--ci:9}
+.hfill{transform-origin:left;animation:growX .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*45ms)}
+svg path.bar{transform-box:fill-box;transform-origin:bottom;animation:growY .8s cubic-bezier(.2,.8,.2,1) both;
+  animation-delay:calc(var(--i,0)*28ms)}
+.area-line,.ln-draw{animation:draw 1.2s ease-out both}
+.area-fill{animation:fadeIn 1s ease-out .25s both}
+.pk{animation:fadeIn .4s ease 1s both}
+#tip{transition:opacity .12s}
+@media (max-width:1180px){.grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:980px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:static;height:auto;padding:14px 12px;overflow:visible}
+  .side-brand{display:flex;align-items:center;gap:12px;text-align:left;padding:0 0 12px}
+  .side-brand .av{margin:0;width:46px;height:46px;font-size:15px;flex:none}
+  .side-brand .tags{justify-content:flex-start;margin-top:6px}
+  .side-nav{flex-direction:row;overflow-x:auto;gap:4px}
+  .side-nav button{width:auto;white-space:nowrap;border-radius:12px;padding:10px 14px}
+  .side-nav button[aria-selected=true]::before{display:none}
+  .side-foot{display:flex;align-items:center;padding:12px 0 0;margin-top:0}
+  .main .wrap{padding:18px 14px 48px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}

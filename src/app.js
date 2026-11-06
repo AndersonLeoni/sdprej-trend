@@ -17,6 +17,9 @@ const ORD=['--ord-1','--ord-2','--ord-3','--ord-4','--ord-5'];
 const JIRA='https://cvccorp.atlassian.net/browse/';
 const NS='http://www.w3.org/2000/svg';
 const mk=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+/* largura real do recipiente: o grafico desenha em pixels reais, entao o texto dos
+   eixos nao encolhe quando o cartao fica estreito (antes o SVG era esticado) */
+const vw=el=>Math.max(320,el.clientWidth||1000);
 
 const tip=document.getElementById('tip');
 function showTip(e,html){
@@ -43,11 +46,18 @@ function hbarsInto(mountId,rows,opt){
   const max=Math.max(...rows.map(r=>r.value),1);
   rows.forEach((r,i)=>{
     const row=document.createElement('div'); row.className='hrow';
+    row.style.setProperty('--i',i);
     const color=r.color||(opt.ordinal?`var(${ORD[Math.min(i,4)]})`:'var(--series-1)');
     row.innerHTML=`<div class="hlab" title="${esc(r.name)}">${esc(r.name)}</div>`+
       `<div class="htrack"><div class="hfill" style="width:${(r.value/max*100).toFixed(2)}%;background:${color}"></div></div>`+
       `<div class="hval">${opt.fmt?opt.fmt(r):nfInt.format(r.value)}</div>`;
     bindTip(row,`<b>${esc(r.name)}</b>${r.tip||`<span>${nfInt.format(r.value)}</span>`}`);
+    /* clicar na barra aplica o filtro correspondente; clicar de novo remove */
+    if(opt.onClick&&!r.isOther&&!r.noClick){
+      row.classList.add('click');
+      if(opt.active&&opt.active(r.name)) row.classList.add('on');
+      row.addEventListener('click',()=>{hideTip();opt.onClick(r);});
+    }
     el.appendChild(row);
   });
 }
@@ -56,13 +66,13 @@ function barsInto(mountId,cats,series,opt){
   opt=opt||{};
   const el=document.getElementById(mountId); el.innerHTML='';
   if(!cats.length||!series.length){ el.innerHTML='<div class="empty">Sem dados no recorte atual.</div>'; return; }
-  const W=1000,H=opt.h||260,mL=48,mR=10,mT=22,mB=opt.mB||48;
+  const W=vw(el),H=opt.h||260,mL=48,mR=10,mT=22,mB=opt.mB||48;
   const pw=W-mL-mR, ph=H-mT-mB;
   let max=0; cats.forEach((c,i)=>series.forEach(s=>{if(s.values[i]>max)max=s.values[i];}));
   max=max||1;
   const step=pw/cats.length, n=series.length;
   const gw=Math.min(step-8,n>1?150:88), bw=Math.max(2,(gw-2*(n-1))/n);
-  const svg=mk('svg',{viewBox:`0 0 ${W} ${H}`,role:'img',preserveAspectRatio:'none'});
+  const svg=mk('svg',{viewBox:`0 0 ${W} ${H}`,role:'img'});
   svg.style.height=H+'px';
   for(let t=0;t<=4;t++){
     const y=mT+ph-(ph*t/4);
@@ -86,7 +96,7 @@ function barsInto(mountId,cats,series,opt){
       const h=Math.max(2,v/max*ph), x=gx+j*(bw+2), y=mT+ph-h;
       const rad=Math.min(4,h/2,bw/2);
       const color=s.color||(opt.ordinal?`var(${ORD[Math.min(i,4)]})`:'var(--series-1)');
-      svg.appendChild(mk('path',{fill:color,d:
+      svg.appendChild(mk('path',{fill:color,class:'bar',style:`--i:${i}`,d:
         `M${x},${mT+ph} L${x},${y+rad} Q${x},${y} ${x+rad},${y} L${x+bw-rad},${y} Q${x+bw},${y} ${x+bw},${y+rad} L${x+bw},${mT+ph} Z`}));
       const peak = opt.labelMode==='global' ? (v===max) : (v===Math.max(...s.values));
       if(peak&&v>0){
@@ -106,11 +116,159 @@ function barsInto(mountId,cats,series,opt){
   el.appendChild(svg);
 }
 
+/* rosca com total no centro, legenda ao lado e destaque ao passar o mouse.
+   rows: [{name,value,color,tip?,isOther?}]  opt: {fmt,label,onClick,active} */
+function donutInto(mountId,rows,opt){
+  opt=opt||{};
+  const el=document.getElementById(mountId); el.innerHTML='';
+  const tot=rows.reduce((s,r)=>s+r.value,0);
+  if(!rows.length||!tot){ el.innerHTML='<div class="empty">Sem dados no recorte atual.</div>'; return; }
+  const R=78,C=2*Math.PI*R,GAP=rows.length>1?3:0;
+  const fmt=opt.fmt||(v=>nfInt.format(v));
+  const pct=v=>(v/tot*100).toFixed(1).replace('.',',')+'%';
+  const svg=mk('svg',{viewBox:'0 0 200 200',role:'img'});
+  const g=mk('g',{transform:'rotate(-90 100 100)'}); svg.appendChild(g);
+  const cTxt=mk('text',{x:100,y:100,class:'dv','text-anchor':'middle'});
+  const cSub=mk('text',{x:100,y:121,class:'dk','text-anchor':'middle'});
+  const short=s=>s.length>24?s.slice(0,23)+'…':s;
+  const reset=()=>{cTxt.textContent=fmt(tot);cSub.textContent=opt.label||'total';};
+  const slices=[],items=[]; let acc=0;
+  const hl=i=>{
+    slices.forEach((s,j)=>s.classList.toggle('dim',i>=0&&j!==i));
+    items.forEach((s,j)=>s.classList.toggle('dim',i>=0&&j!==i));
+    if(i>=0){cTxt.textContent=pct(rows[i].value);cSub.textContent=short(rows[i].name);} else reset();
+  };
+  const go=r=>{ if(opt.onClick&&!r.isOther&&!r.noClick){hideTip();opt.onClick(r);} };
+  rows.forEach((r,i)=>{
+    const len=Math.max(r.value/tot*C-GAP,0.5);
+    const c=mk('circle',{cx:100,cy:100,r:R,class:'sl',stroke:r.color,
+      style:`stroke-dasharray:${len} ${C-len};stroke-dashoffset:${-acc};--i:${i}`});
+    acc+=r.value/tot*C;
+    const html=`<b>${esc(r.name)}</b>`+(r.tip||`<span>${fmt(r.value)}</span>`)+`<span>${pct(r.value)} do total</span>`;
+    c.addEventListener('mouseenter',()=>hl(i));
+    c.addEventListener('mousemove',e=>showTip(e,html));
+    c.addEventListener('mouseleave',()=>{hl(-1);hideTip();});
+    c.addEventListener('click',()=>go(r));
+    g.appendChild(c); slices.push(c);
+  });
+  svg.appendChild(cTxt); svg.appendChild(cSub); reset();
+  const leg=document.createElement('div'); leg.className='dleg';
+  rows.forEach((r,i)=>{
+    const it=document.createElement('div'); it.className='dli';
+    if(opt.onClick&&!r.isOther&&!r.noClick) it.classList.add('click');
+    if(opt.active&&opt.active(r.name)) it.classList.add('on');
+    it.innerHTML=`<i style="background:${r.color}"></i><span class="dn" title="${esc(r.name)}">${esc(r.name)}</span>`+
+      `<b>${fmt(r.value)}</b><em>${pct(r.value)}</em>`;
+    it.addEventListener('mouseenter',()=>hl(i));
+    it.addEventListener('mouseleave',()=>hl(-1));
+    it.addEventListener('click',()=>go(r));
+    leg.appendChild(it); items.push(it);
+  });
+  el.appendChild(svg); el.appendChild(leg);
+}
+
+/* curva suave que nao passa dos pontos (cubica monotona): nao cria "morro" falso entre meses */
+function smoothPath(pts){
+  const n=pts.length;
+  if(n<2) return `M${pts[0][0]},${pts[0][1]}`;
+  const dx=[],m=[],t=[];
+  for(let i=0;i<n-1;i++){dx[i]=pts[i+1][0]-pts[i][0]; m[i]=(pts[i+1][1]-pts[i][1])/dx[i];}
+  t[0]=m[0]; t[n-1]=m[n-2];
+  for(let i=1;i<n-1;i++) t[i]=m[i-1]*m[i]<=0?0:(m[i-1]+m[i])/2;
+  for(let i=0;i<n-1;i++){
+    if(m[i]===0){t[i]=0;t[i+1]=0;continue;}
+    const a=t[i]/m[i],b=t[i+1]/m[i],s=a*a+b*b;
+    if(s>9){const k=3/Math.sqrt(s);t[i]=k*a*m[i];t[i+1]=k*b*m[i];}
+  }
+  let d=`M${pts[0][0]},${pts[0][1]}`;
+  for(let i=0;i<n-1;i++){
+    const h=dx[i]/3;
+    d+=` C${pts[i][0]+h},${pts[i][1]+t[i]*h} ${pts[i+1][0]-h},${pts[i+1][1]-t[i+1]*h} ${pts[i+1][0]},${pts[i+1][1]}`;
+  }
+  return d;
+}
+
+/* serie temporal em area suave, com linha-guia e dica ao passar o mouse */
+function areaInto(mountId,cats,series,opt){
+  opt=opt||{};
+  const el=document.getElementById(mountId); el.innerHTML='';
+  if(!cats.length||!series.length){ el.innerHTML='<div class="empty">Sem dados no recorte atual.</div>'; return; }
+  const W=vw(el),H=opt.h||260,mL=52,mR=16,mT=26,mB=opt.mB||50;
+  const pw=W-mL-mR, ph=H-mT-mB, n=cats.length;
+  let max=0; series.forEach(s=>s.values.forEach(v=>{if(v>max)max=v;})); max=max||1;
+  const X=i=>n===1?mL+pw/2:mL+pw*i/(n-1), Y=v=>mT+ph-(v/max*ph);
+  const fmtV=opt.fmtV||(v=>nfInt.format(v));
+  const svg=mk('svg',{viewBox:`0 0 ${W} ${H}`,role:'img'});
+  svg.style.height=H+'px';
+  const defs=mk('defs',{}); svg.appendChild(defs);
+  for(let t=0;t<=4;t++){
+    const y=mT+ph-(ph*t/4);
+    svg.appendChild(mk('line',{x1:mL,x2:mL+pw,y1:y,y2:y,class:'gl'}));
+    const lb=mk('text',{x:mL-8,y:y+3.5,class:'tk','text-anchor':'end'});
+    lb.textContent=opt.fmtY?opt.fmtY(max*t/4):nfInt.format(Math.round(max*t/4));
+    svg.appendChild(lb);
+  }
+  svg.appendChild(mk('line',{x1:mL,x2:mL+pw,y1:mT+ph,y2:mT+ph,class:'axl'}));
+  const every=opt.every||Math.max(1,Math.ceil(n/12));
+  cats.forEach((c,i)=>{
+    if(i%every!==0&&i!==n-1) return;
+    const tx=X(i);
+    const lb=mk('text',{x:tx,y:mT+ph+16,class:'tk','text-anchor':opt.rotate?'end':'middle'});
+    lb.textContent=opt.catLabel?opt.catLabel(c):c;
+    if(opt.rotate) lb.setAttribute('transform',`rotate(-38 ${tx} ${mT+ph+16})`);
+    svg.appendChild(lb);
+  });
+  series.forEach((s,j)=>{
+    const color=s.color||'var(--series-1)', gid=`ag-${mountId}-${j}`;
+    const lg=mk('linearGradient',{id:gid,x1:0,y1:0,x2:0,y2:1});
+    lg.appendChild(mk('stop',{offset:'0%','stop-color':color,'stop-opacity':.36}));
+    lg.appendChild(mk('stop',{offset:'100%','stop-color':color,'stop-opacity':0}));
+    defs.appendChild(lg);
+    const pts=s.values.map((v,i)=>[X(i),Y(v)]);
+    if(n>1){
+      const d=smoothPath(pts);
+      svg.appendChild(mk('path',{d:`${d} L${X(n-1)},${mT+ph} L${X(0)},${mT+ph} Z`,fill:`url(#${gid})`,class:'area-fill'}));
+      svg.appendChild(mk('path',{d,fill:'none',stroke:color,'stroke-width':2.6,'stroke-linecap':'round',
+        'stroke-linejoin':'round',pathLength:1,class:'area-line'}));
+    }
+    const pk=s.values.indexOf(Math.max(...s.values));
+    if(s.values[pk]>0){
+      svg.appendChild(mk('circle',{cx:X(pk),cy:Y(s.values[pk]),r:5,fill:color,stroke:'var(--surface-1)','stroke-width':2.5,class:'pk'}));
+      const dl=mk('text',{x:X(pk),y:Y(s.values[pk])-11,class:'dlab','text-anchor':'middle'});
+      dl.textContent=fmtV(s.values[pk]); svg.appendChild(dl);
+    }
+  });
+  const cross=mk('line',{x1:0,x2:0,y1:mT,y2:mT+ph,class:'xh',opacity:0}); svg.appendChild(cross);
+  const dots=series.map(s=>{
+    const c=mk('circle',{r:5.5,fill:s.color||'var(--series-1)',stroke:'var(--surface-1)','stroke-width':2.5,opacity:0});
+    svg.appendChild(c); return c;
+  });
+  const hit=mk('rect',{x:mL,y:mT,width:pw,height:ph,fill:'transparent'}); svg.appendChild(hit);
+  hit.addEventListener('mousemove',e=>{
+    const r=svg.getBoundingClientRect(), rel=(e.clientX-r.left)/r.width*W;
+    let i=n===1?0:Math.round((rel-mL)/(pw/(n-1))); i=Math.max(0,Math.min(n-1,i));
+    cross.setAttribute('x1',X(i)); cross.setAttribute('x2',X(i)); cross.setAttribute('opacity',1);
+    dots.forEach((c,j)=>{c.setAttribute('cx',X(i));c.setAttribute('cy',Y(series[j].values[i]));c.setAttribute('opacity',1);});
+    showTip(e,`<b>${esc(opt.catLabel?opt.catLabel(cats[i]):cats[i])}</b>`+series.map(s=>
+      `<span>${series.length>1?`<i style="background:${s.color}"></i>${esc(s.label)}: `:''}${fmtV(s.values[i])}</span>`).join(''));
+  });
+  hit.addEventListener('mouseleave',()=>{cross.setAttribute('opacity',0);dots.forEach(c=>c.setAttribute('opacity',0));hideTip();});
+  el.appendChild(svg);
+}
+
 /* ===================== VIEW: TEMAS ===================== */
+/* cor de cada natureza do prejuizo (mesma ordem de series validada no CSS) */
+const TIPO_COR={'Falha técnica (sistema/integração)':'var(--series-1)','Processo / decisão humana':'var(--series-2)',
+                'Ambíguo (requer análise caso a caso)':'var(--series-3)','Não classificado':'var(--neutral)'};
+
 const ViewTemas=(function(){
   const I=DT.issues;
   const AG=['0-90 dias','91-180 dias','181-365 dias','366-540 dias','541+ dias'];
   let metric='count', sortKey='valor', sortDir=-1, shown=100;
+  /* clicar numa barra aplica o filtro; clicar de novo na mesma barra remove */
+  const pick=id=>({
+    onClick:r=>{const s=document.getElementById(id);s.value=(s.value===r.name)?'':r.name;shown=100;render();},
+    active:n=>document.getElementById(id).value===n});
   I.forEach(i=>{
     i.valor=+i.valor||0; i.diasAberto=+i.diasAberto||0;
     i.aging = i.diasAberto<=90?AG[0] : i.diasAberto<=180?AG[1]
@@ -287,21 +445,22 @@ const ViewTemas=(function(){
     const rows=current();
     kpis(rows);
     const t=agg(rows,'temaDerivado',8);
-    hbarsInto('ch-tema',toRows(t,rows.length),{fmt:fmtBar});
+    hbarsInto('ch-tema',toRows(t,rows.length),{fmt:fmtBar,...pick('fTema')});
     const lead=t.filter(r=>!r.isOther)[0];
     document.getElementById('cs-tema').innerHTML=lead
-      ? `Derivado do padrão do resumo. Liderança: <b>${esc(lead.name)}</b> com ${nfInt.format(lead.count)} chamados (${(lead.count/rows.length*100).toFixed(0)}%) e ${fmtBRL(lead.valor)}.`
+      ? `Derivado do padrão do resumo. Liderança: <b>${esc(lead.name)}</b> com ${nfInt.format(lead.count)} chamados (${(lead.count/rows.length*100).toFixed(0)}%) e ${fmtBRL(lead.valor)}. <em>Clique numa barra para filtrar.</em>`
       : 'Derivado do padrão do resumo do chamado.';
     hbarsInto('ch-falha',toRows(agg(rows,'falha',6),rows.length),{fmt:fmtBar});
-    hbarsInto('ch-area',toRows(agg(rows,'areaFalha',8),rows.length),{fmt:fmtBar});
+    hbarsInto('ch-area',toRows(agg(rows,'areaFalha',8),rows.length),{fmt:fmtBar,...pick('fArea')});
     hbarsInto('ch-forn',toRows(agg(rows,'fornecedor',12),rows.length),{fmt:fmtBar});
     hbarsInto('ch-cli',toRows(agg(rows,'cliente',12),rows.length),{fmt:fmtBar});
-    hbarsInto('ch-prod',toRows(agg(rows,'produtoDerivado',8),rows.length),{fmt:fmtBar});
+    hbarsInto('ch-prod',toRows(agg(rows,'produtoDerivado',8),rows.length),{fmt:fmtBar,...pick('fProduto')});
 
     /* Natureza do prejuízo: técnico vs não-técnico vs ambíguo — proposta de
        classificação por tema, ver comentário em extract/derive.js. */
     const tp=agg(rows,'tipoDerivado',null);
-    hbarsInto('ch-tipo',toRows(tp,rows.length),{fmt:fmtBar});
+    donutInto('ch-tipo',toRows(tp,rows.length).map(r=>({...r,color:TIPO_COR[r.name]||'var(--neutral)'})),
+      {fmt:v=>metric==='count'?nfInt.format(v):nfBRL.format(v),label:metric==='count'?'chamados':'em prejuízo'});
     document.getElementById('t-kpis-tipo').innerHTML=tp.map(r=>`
       <div class="tile"><div class="k">${esc(r.name)}</div><div class="v">${nfInt.format(r.count)}</div>
         <div class="n">${rows.length?(r.count/rows.length*100).toFixed(0):0}% do recorte · ${fmtBRL(r.valor)}</div></div>`).join('');
@@ -309,7 +468,7 @@ const ViewTemas=(function(){
     /* Novo: Valor por departamento responsável (estado atual) */
     const dept=agg(rows,'areaFalha',12);
     const m_save=metric; metric='valor';
-    hbarsInto('ch-dept',toRows(dept,rows.length),{fmt:fmtBar});
+    hbarsInto('ch-dept',toRows(dept,rows.length),{fmt:fmtBar,...pick('fArea')});
     document.getElementById('cs-dept').innerHTML=
       dept.length?'Valor acumulado por departamento responsável. Liderança: <b>'+esc(dept[0].name)+'</b> com '+fmtBRL(dept[0].valor)+'.'
       :'Sem dados.';
@@ -336,9 +495,9 @@ const ViewTemas=(function(){
       }
     }
     const ev=Math.max(1,Math.ceil(months.length/12));
-    barsInto('ch-mesq',months.map(r=>r.name),[{label:'Chamados',values:months.map(r=>r.count)}],
-      {rotate:true,every:ev,mB:52,catLabel:mLab,labelMode:'series'});
-    barsInto('ch-mesv',months.map(r=>r.name),[{label:'Valor',values:months.map(r=>r.valor)}],
+    areaInto('ch-mesq',months.map(r=>r.name),[{label:'Chamados',color:'var(--series-1)',values:months.map(r=>r.count)}],
+      {rotate:true,every:ev,mB:52,catLabel:mLab});
+    areaInto('ch-mesv',months.map(r=>r.name),[{label:'Valor',color:'var(--series-2)',values:months.map(r=>r.valor)}],
       {rotate:true,every:ev,mB:52,catLabel:mLab,fmtY:fmtBRLCompact,fmtV:fmtBRLCompact});
 
     heat(rows); table(rows);
@@ -449,13 +608,13 @@ const ViewAna=(function(){
   function lines(mountId,cats,series){
     const el=document.getElementById(mountId); el.innerHTML='';
     if(!cats.length||!series.length){ el.innerHTML='<div class="empty">Sem dados no recorte atual.</div>'; return; }
-    const W=1000,H=300,mL=46,mR=46,mT=22,mB=44;
+    const W=vw(el),H=300,mL=46,mR=46,mT=22,mB=44;
     const pw=W-mL-mR, ph=H-mT-mB;
     let max=0; series.forEach(s=>s.values.forEach(v=>{if(v>max)max=v;})); max=max||1;
     const n=cats.length;
     const X=i=>n===1?mL+pw/2:mL+(pw*i/(n-1));
     const Y=v=>mT+ph-(v/max*ph);
-    const svg=mk('svg',{viewBox:`0 0 ${W} ${H}`,role:'img',preserveAspectRatio:'none'});
+    const svg=mk('svg',{viewBox:`0 0 ${W} ${H}`,role:'img'});
     svg.style.height='300px';
     for(let t=0;t<=4;t++){
       const y=mT+ph-(ph*t/4);
@@ -476,7 +635,7 @@ const ViewAna=(function(){
     series.forEach(s=>{
       const d=s.values.map((v,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
       svg.appendChild(mk('path',{d,fill:'none',stroke:s.color,'stroke-width':2,
-        'stroke-linejoin':'round','stroke-linecap':'round'}));
+        'stroke-linejoin':'round','stroke-linecap':'round',pathLength:1,class:'ln-draw'}));
       s.values.forEach((v,i)=>{ if(!v) return;
         svg.appendChild(mk('circle',{cx:X(i),cy:Y(v),r:4,fill:s.color,
           stroke:'var(--surface-1)','stroke-width':2}));});
@@ -731,6 +890,9 @@ function stackedInto(mountId,rows,classes,opt){
 /* ===================== VIEW: GDIS ===================== */
 const ViewGdis=(function(){
   let metric='count', sortKey='dias', sortDir=-1, shown=100;
+  const pick=id=>({
+    onClick:r=>{const s=document.getElementById(id);s.value=(s.value===r.name)?'':r.name;shown=100;render();},
+    active:n=>document.getElementById(id).value===n});
   const ETAPAS=[...new Set(GI.map(o=>o.etapa))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const TEMAS=[...new Set(GI.map(o=>o.tema))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const PRODUTOS=[...new Set(GI.map(o=>o.produto))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
@@ -803,7 +965,7 @@ const ViewGdis=(function(){
             `<span>${fmtBRL(sum(g,r=>r.valor))}</span>`+
             (g.length?`<span>idade média ${nfInt.format(avgD(g))} dias</span>`:'')};
     }).filter(r=>r.n>0);
-    hbarsInto('g-ch-sit',rows,{fmt:r=>fmtM(r.value)});
+    hbarsInto('g-ch-sit',rows,{fmt:r=>fmtM(r.value),...pick('gSit')});
     document.getElementById('g-cs-sit').innerHTML=
       `Ordem do ciclo de vida do incidente — o tom se intensifica conforme a análise avança. `+
       `<b>Sem vínculo rastreável</b> fica fora da escala, em cinza, porque não é um estágio: é ausência de informação.`;
@@ -866,7 +1028,7 @@ const ViewGdis=(function(){
         tip:`<span>${nfInt.format(g.length)} chamados &middot; ${pc(g.length,rs.length)}% do recorte</span>`+
             `<span>${fmtBRL(sum(g,r=>r.valor))}</span>`};
     }).filter(r=>r.n>0).sort((a,b)=>b.value-a.value);
-    hbarsInto('g-ch-prod',rows,{fmt:r=>fmtM(r.value)});
+    hbarsInto('g-ch-prod',rows,{fmt:r=>fmtM(r.value),...pick('gProduto')});
   }
 
   function chTema(rs){
@@ -1042,6 +1204,9 @@ const RI=(function(){
 
 const ViewRel=(function(){
   let metric='count', sortKey='valor', sortDir=-1, shown=100;
+  const pick=id=>({
+    onClick:r=>{const s=document.getElementById(id);s.value=(s.value===r.name)?'':r.name;shown=100;render();},
+    active:n=>document.getElementById(id).value===n});
   const TEMAS=[...new Set(RI.map(o=>o.tema))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const FASES_USADAS=RFASE.filter(f=>RI.some(o=>o.fase===f.c));
   (function fill(){
@@ -1100,7 +1265,7 @@ const ViewRel=(function(){
             `<span>${nfInt.format(sum(g,r=>r.qtd))} SDPREJ vinculados</span>`+
             `<span>${fmtBRL(sum(g,r=>r.valor))}</span>`};
     });
-    hbarsInto('r-ch-funil',rows,{fmt:r=>fmtM(r.value)});
+    hbarsInto('r-ch-funil',rows,{fmt:r=>fmtM(r.value),...pick('rFase')});
     const fim=rs.filter(r=>RF[r.fase].fim).length;
     const ab=rs.filter(aberto);
     document.getElementById('r-cs-funil').innerHTML=rs.length
@@ -1141,7 +1306,7 @@ const ViewRel=(function(){
       .map(([name,e],i)=>({name,value:metric==='count'?e.n:e.v,color:`var(${ORD[Math.min(i,4)]})`,
         tip:`<span>${nfInt.format(e.n)} problema${e.n===1?'':'s'} em aberto</span>`+
             `<span>${nfInt.format(e.q)} SDPREJ</span><span>${fmtBRL(e.v)}</span>`}));
-    hbarsInto('r-ch-tema',rows,{fmt:r=>fmtM(r.value)});
+    hbarsInto('r-ch-tema',rows,{fmt:r=>fmtM(r.value),...pick('rTema')});
   }
 
   function prio(rs){
@@ -1236,6 +1401,9 @@ const ViewRel=(function(){
 const ViewHE=(function(){
   const I=HE.issues;
   let sortKey='valor', sortDir=-1, shown=100;
+  const pick=id=>({
+    onClick:r=>{const s=document.getElementById(id);s.value=(s.value===r.name)?'':r.name;shown=100;render();},
+    active:n=>document.getElementById(id).value===n});
   I.forEach(i=>{ i.valor=+i.valor||0; });
   const uniq=k=>[...new Set(I.map(x=>x[k]||'Não informado'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   function fill(id,vals){
@@ -1331,11 +1499,12 @@ const ViewHE=(function(){
   function render(){
     const rows=current();
     kpis(rows);
-    hbarsInto('he-ch-tema',toRows(agg(rows,'temaDerivado',8)));
-    hbarsInto('he-ch-prod',toRows(agg(rows,'produtoDerivado',8)));
-    hbarsInto('he-ch-tipo',toRows(agg(rows,'tipoDerivado',null)));
-    hbarsInto('he-ch-status',toRows(agg(rows,'status',null)));
-    hbarsInto('he-ch-area',toRows(agg(rows,'areaFalha',8)));
+    hbarsInto('he-ch-tema',toRows(agg(rows,'temaDerivado',8)),pick('heTema'));
+    hbarsInto('he-ch-prod',toRows(agg(rows,'produtoDerivado',8)),pick('heProduto'));
+    donutInto('he-ch-tipo',toRows(agg(rows,'tipoDerivado',null)).map(r=>({...r,color:TIPO_COR[r.name]||'var(--neutral)'})),
+      {label:'chamados'});
+    hbarsInto('he-ch-status',toRows(agg(rows,'status',null)),pick('heStatus'));
+    hbarsInto('he-ch-area',toRows(agg(rows,'areaFalha',8)),pick('heArea'));
 
     const byM=new Map();
     rows.forEach(r=>{const k=r.created.slice(0,7);
@@ -1352,7 +1521,7 @@ const ViewHE=(function(){
       }
     }
     const ev=Math.max(1,Math.ceil(months.length/12));
-    barsInto('he-ch-mes',months.map(r=>r.name),[{label:'Valor',values:months.map(r=>r.valor)}],
+    areaInto('he-ch-mes',months.map(r=>r.name),[{label:'Valor',color:'var(--series-2)',values:months.map(r=>r.valor)}],
       {rotate:true,every:ev,mB:52,catLabel:mLab,fmtY:fmtBRLCompact,fmtV:fmtBRLCompact});
 
     table(rows);
@@ -1409,6 +1578,43 @@ document.getElementById('themeBtn').addEventListener('click',()=>{
   document.documentElement.setAttribute('data-theme',dark?'light':'dark');
 });
 document.getElementById('chipGer').textContent='Extraído do Jira em '+DT.geradoEm;
+
+/* ===== KPIs: destaque nos dois primeiros cartoes e contagem animada =====
+   Observa o recipiente em vez de mexer em cada view: toda view que troca o
+   innerHTML de um .kpis passa por aqui. So conta de novo quando o texto muda,
+   para um filtro que nao altera o numero nao ficar "piscando". */
+(function(){
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const last=new Map();
+  const ease=t=>1-Math.pow(1-t,3);
+  function contar(v,chave){
+    const tn=[...v.childNodes].find(n=>n.nodeType===3&&/\d/.test(n.textContent));
+    if(!tn) return;
+    const txt=tn.textContent, m=txt.match(/\d{1,3}(?:\.\d{3})+|\d+/);
+    if(!m||last.get(chave)===txt) return;
+    last.set(chave,txt);
+    if(reduce) return;
+    const alvo=parseInt(m[0].replace(/\./g,''),10);
+    if(!(alvo>0)) return;
+    const t0=performance.now(), dur=750;
+    (function passo(t){
+      const k=Math.min(1,(t-t0)/dur);
+      tn.textContent=k>=1?txt:txt.replace(m[0],nfInt.format(Math.round(alvo*ease(k))));
+      if(k<1) requestAnimationFrame(passo);
+    })(t0);
+  }
+  function decorar(c){
+    const tiles=[...c.children].filter(e=>e.classList.contains('tile'));
+    if(c.id!=='t-kpis-tipo') tiles.slice(0,2).forEach((t,i)=>t.classList.add(i?'f2':'f1'));
+    tiles.forEach((t,i)=>{const v=t.querySelector('.v'); if(v) contar(v,c.id+i);});
+  }
+  const obs=new MutationObserver(ms=>ms.forEach(m=>decorar(m.target)));
+  document.querySelectorAll('.kpis').forEach(c=>{
+    obs.observe(c,{childList:true});
+    if(c.children.length) decorar(c);
+  });
+})();
+
 ViewTemas.render();
 
 addEventListener('resize',()=>{clearTimeout(window.__r);
