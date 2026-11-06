@@ -1,46 +1,57 @@
+/* Identidade CVC Corp + Trend. Cores de marca lidas dos sites oficiais:
+     Trend  azul #0b6db5 · amarelo #ffd500 · ciano #16c1f3
+     CVC    indigo #0a00b4 · amarelo #ffe600 · lavanda #dddbff · fundo #f7f7f8 · texto #585e6a
+   As cores de SERIE dos graficos nao sao a marca crua: o validador de paleta
+   (dataviz) reprova o indigo puro (escuro demais) e, no tema escuro, o amarelo e o
+   ciano (claros demais). Elas sao tons da mesma familia, validados nos dois temas.
+   A marca pura fica na interface (faixa do topo, abas, links). */
 :root{
   color-scheme: light;
-  --surface-1:#fcfcfb; --plane:#f9f9f7;
-  --text-primary:#0b0b0b; --text-secondary:#52514e; --muted:#898781;
-  --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
-  --series-1:#2a78d6; --series-2:#eb6834; --neutral:#a8a6a0;
-  --seq-0:rgba(11,11,11,0.045);
-  --seq-100:#cde2fb; --seq-200:#9ec5f4; --seq-300:#6da7ec; --seq-400:#3987e5;
-  --seq-500:#256abf; --seq-600:#184f95; --seq-700:#0d366b;
-  --on-seq-1:#0b0b0b; --on-seq-2:#0b0b0b; --on-seq-3:#0b0b0b; --on-seq-4:#ffffff;
+  --brand-blue:#0b6db5; --brand-yellow:#ffd500; --brand-indigo:#0a00b4; --brand-lav:#dddbff;
+  --brandbar:#0b6db5; --on-brandbar:#ffffff; --on-accent:#ffffff; --link:#0a00b4;
+  --surface-1:#ffffff; --plane:#f7f7f8;
+  --text-primary:#27292a; --text-secondary:#585e6a; --muted:#8f939c;
+  --grid:#e4e6ea; --baseline:#c9ccd3; --border:rgba(39,41,42,0.10);
+  --series-1:#0b6db5; --series-2:#d99a00; --series-3:#5a4be0; --series-4:#12a0d0; --neutral:#a3a8b1;
+  --seq-0:rgba(39,41,42,0.045);
+  --seq-100:#d9eaf7; --seq-200:#aed2ec; --seq-300:#78b4de; --seq-400:#3f93cc;
+  --seq-500:#0b6db5; --seq-600:#0a4a96; --seq-700:#1a2a80;
+  --on-seq-1:#27292a; --on-seq-2:#27292a; --on-seq-3:#27292a; --on-seq-4:#27292a;
   --on-seq-5:#ffffff; --on-seq-6:#ffffff; --on-seq-7:#ffffff;
-  --ord-1:#86b6ef; --ord-2:#5598e7; --ord-3:#2a78d6; --ord-4:#1c5cab; --ord-5:#104281;
+  --ord-1:#8fc3e8; --ord-2:#4f9fd6; --ord-3:#0b6db5; --ord-4:#0a4a96; --ord-5:#1a2a80;
   --critical:#d03b3b; --warning:#fab219; --good:#0ca30c;
   --conf-bg:rgba(208,59,59,0.07);
 }
 @media (prefers-color-scheme: dark){
   :root:where(:not([data-theme="light"])){
     color-scheme: dark;
-    --surface-1:#1a1a19; --plane:#0d0d0d;
-    --text-primary:#ffffff; --text-secondary:#c3c2b7; --muted:#898781;
-    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
-    --series-1:#3987e5; --series-2:#d95926; --neutral:#75736d;
+    --brandbar:#0a3a63; --on-accent:#0b0b0b; --link:#9d94ff;
+    --surface-1:#1a1a19; --plane:#0e1013;
+    --text-primary:#f4f5f7; --text-secondary:#c3c6cd; --muted:#8f939c;
+    --grid:#2a2d33; --baseline:#3a3e46; --border:rgba(255,255,255,0.10);
+    --series-1:#3b9be0; --series-2:#c98500; --series-3:#8478f5; --series-4:#0f93bc; --neutral:#6f747d;
     --seq-0:rgba(255,255,255,0.05);
-    --seq-100:#0d366b; --seq-200:#104281; --seq-300:#184f95; --seq-400:#256abf;
-    --seq-500:#2a78d6; --seq-600:#5598e7; --seq-700:#86b6ef;
+    --seq-100:#10294f; --seq-200:#123f73; --seq-300:#14589a; --seq-400:#1f74c2;
+    --seq-500:#3b9be0; --seq-600:#6bb5ea; --seq-700:#9fd0f3;
     --on-seq-1:#ffffff; --on-seq-2:#ffffff; --on-seq-3:#ffffff; --on-seq-4:#ffffff;
-    --on-seq-5:#ffffff; --on-seq-6:#0b0b0b; --on-seq-7:#0b0b0b;
-    --ord-1:#b7d3f6; --ord-2:#86b6ef; --ord-3:#5598e7; --ord-4:#2a78d6; --ord-5:#184f95;
+    --on-seq-5:#0b0b0b; --on-seq-6:#0b0b0b; --on-seq-7:#0b0b0b;
+    --ord-1:#b4d9f4; --ord-2:#6bb5ea; --ord-3:#3b9be0; --ord-4:#1f74c2; --ord-5:#14589a;
     --conf-bg:rgba(208,59,59,0.13);
   }
 }
 :root[data-theme="dark"]{
   color-scheme: dark;
-  --surface-1:#1a1a19; --plane:#0d0d0d;
-  --text-primary:#ffffff; --text-secondary:#c3c2b7; --muted:#898781;
-  --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
-  --series-1:#3987e5; --series-2:#d95926; --neutral:#75736d;
+  --brandbar:#0a3a63; --on-accent:#0b0b0b; --link:#9d94ff;
+  --surface-1:#1a1a19; --plane:#0e1013;
+  --text-primary:#f4f5f7; --text-secondary:#c3c6cd; --muted:#8f939c;
+  --grid:#2a2d33; --baseline:#3a3e46; --border:rgba(255,255,255,0.10);
+  --series-1:#3b9be0; --series-2:#c98500; --series-3:#8478f5; --series-4:#0f93bc; --neutral:#6f747d;
   --seq-0:rgba(255,255,255,0.05);
-  --seq-100:#0d366b; --seq-200:#104281; --seq-300:#184f95; --seq-400:#256abf;
-  --seq-500:#2a78d6; --seq-600:#5598e7; --seq-700:#86b6ef;
+  --seq-100:#10294f; --seq-200:#123f73; --seq-300:#14589a; --seq-400:#1f74c2;
+  --seq-500:#3b9be0; --seq-600:#6bb5ea; --seq-700:#9fd0f3;
   --on-seq-1:#ffffff; --on-seq-2:#ffffff; --on-seq-3:#ffffff; --on-seq-4:#ffffff;
-  --on-seq-5:#ffffff; --on-seq-6:#0b0b0b; --on-seq-7:#0b0b0b;
-  --ord-1:#b7d3f6; --ord-2:#86b6ef; --ord-3:#5598e7; --ord-4:#2a78d6; --ord-5:#184f95;
+  --on-seq-5:#0b0b0b; --on-seq-6:#0b0b0b; --on-seq-7:#0b0b0b;
+  --ord-1:#b4d9f4; --ord-2:#6bb5ea; --ord-3:#3b9be0; --ord-4:#1f74c2; --ord-5:#14589a;
   --conf-bg:rgba(208,59,59,0.13);
 }
 
@@ -49,6 +60,16 @@ html,body{margin:0;padding:0}
 body{background:var(--plane);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
   color:var(--text-primary);-webkit-font-smoothing:antialiased}
 .wrap{max-width:1440px;margin:0 auto;padding:18px 24px 64px}
+
+/* ---------- faixa de marca (CVC Corp + Trend) ---------- */
+.brandbar{background:var(--brandbar);color:var(--on-brandbar);border-bottom:4px solid var(--brand-yellow)}
+.brandbar .in{max-width:1440px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brandbar .t{font-size:19px;font-weight:700;letter-spacing:-0.01em;line-height:1.15}
+.brandbar .s{font-size:12px;opacity:.85;margin-top:3px;letter-spacing:.02em}
+.brandbar .sp{flex:1}
+.brandbar .tag{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--brand-lav);color:var(--brand-indigo);border-radius:999px;padding:5px 12px}
+.brandbar .tag.y{background:var(--brand-yellow);color:#27292a}
 
 /* ---------- confidential bar ---------- */
 .conf{background:var(--conf-bg);border:1px solid var(--border);border-left:3px solid var(--critical);
@@ -63,7 +84,8 @@ body{background:var(--plane);font-family:system-ui,-apple-system,"Segoe UI",sans
   background:transparent;color:var(--text-secondary);cursor:pointer;white-space:nowrap;
   transition:background .15s,color .15s}
 .tabs button:hover{color:var(--text-primary);background:color-mix(in srgb,var(--series-1) 8%,transparent)}
-.tabs button[aria-selected=true]{background:var(--series-1);color:#fff}
+.tabs button[aria-selected=true]{background:var(--series-1);color:var(--on-accent);
+  box-shadow:inset 0 -3px 0 var(--brand-yellow)}
 .viewnav .sp{flex:1}
 .btn{font:inherit;font-size:12.5px;padding:7px 13px;border:1px solid var(--baseline);
   border-radius:8px;background:var(--surface-1);color:var(--text-secondary);cursor:pointer;
@@ -93,7 +115,7 @@ select:focus-visible,input:focus-visible,button:focus-visible,a:focus-visible{ou
 .seg{display:inline-flex;border:1px solid var(--baseline);border-radius:8px;overflow:hidden}
 .seg button{font:inherit;font-size:12.5px;padding:7px 13px;border:0;cursor:pointer;
   background:var(--surface-1);color:var(--text-secondary)}
-.seg button[aria-pressed=true]{background:var(--series-1);color:#fff;font-weight:600}
+.seg button[aria-pressed=true]{background:var(--series-1);color:var(--on-accent);font-weight:600}
 
 /* ---------- kpi ---------- */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(186px,1fr));gap:12px;margin-bottom:22px}
@@ -201,7 +223,7 @@ table.dt td:first-child{white-space:nowrap}
 table.dt tr:hover td{background:color-mix(in srgb,var(--series-1) 5%,transparent)}
 td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 td.sum{max-width:290px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)}
-a{color:var(--series-1);text-decoration:none;font-weight:600}
+a{color:var(--link);text-decoration:none;font-weight:600}
 a:hover{text-decoration:underline}
 .pill{display:inline-block;font-size:10.5px;padding:2px 7px;border-radius:999px;
   border:1px solid var(--border);color:var(--text-secondary);white-space:nowrap}

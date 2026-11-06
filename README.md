@@ -133,6 +133,13 @@ for adiante.
 
 ## Decisões que não são óbvias no código
 
+**Cores: marca na interface, tons validados nos gráficos.** As cores vieram dos sites oficiais
+(Trend: azul `#0b6db5`, amarelo `#ffd500`; CVC: índigo `#0a00b4`, amarelo `#ffe600`, lavanda
+`#dddbff`). A faixa do topo, as abas, os links e os selos usam a marca pura. As cores de *série* dos
+gráficos não: o validador de paleta reprova o índigo puro (escuro demais para ser cor de série) e,
+no tema escuro, o amarelo e o ciano da marca (claros demais). Os gráficos usam tons da mesma
+família, validados nos dois temas. Tudo fica em variáveis no topo de `src/app.css`.
+
 **Por que Node e não PowerShell.** A política de execução efetiva desta máquina é
 `Restricted` por GPO de domínio, e arquivo `.ps1` não executa. A lógica precisava sair
 do PowerShell. Os `.cmd` existem porque o Agendador roda `.cmd` sem restrição.
