@@ -281,9 +281,10 @@ footer b{color:var(--text-secondary)}
   padding:28px 0 18px 14px;color:var(--on-brandbar);
   background:linear-gradient(180deg,var(--brandbar) 0%,color-mix(in srgb,var(--brandbar) 72%,#000) 100%)}
 .side-brand{padding:0 16px 24px 4px;text-align:center}
-.side-brand .av{width:66px;height:66px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;
-  font-size:21px;font-weight:800;letter-spacing:.02em;background:rgba(255,255,255,.12);
+.side-brand .av{width:98px;height:80px;margin:0 auto 14px;border-radius:24px;display:grid;place-items:center;
+  padding:11px;background:#fff;
   box-shadow:0 0 0 3px var(--brand-yellow),0 0 0 8px rgba(255,213,0,.22)}
+.side-brand .av img{display:block;max-width:100%;max-height:100%;object-fit:contain}
 .side-brand .t{font-size:16.5px;font-weight:700;line-height:1.2}
 .side-brand .s{font-size:11px;opacity:.82;margin-top:6px;line-height:1.45}
 .side-brand .tags{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:13px}
@@ -378,7 +379,7 @@ svg path.bar{transform-box:fill-box;transform-origin:bottom;animation:growY .8s 
   .app{grid-template-columns:minmax(0,1fr)}
   .side{position:static;height:auto;padding:14px 12px;overflow:visible}
   .side-brand{display:flex;align-items:center;gap:12px;text-align:left;padding:0 0 12px}
-  .side-brand .av{margin:0;width:46px;height:46px;font-size:15px;flex:none}
+  .side-brand .av{margin:0;width:64px;height:52px;padding:7px;border-radius:16px;flex:none}
   .side-brand .tags{justify-content:flex-start;margin-top:6px}
   .side-nav{flex-direction:row;overflow-x:auto;gap:4px}
   .side-nav button{width:auto;white-space:nowrap;border-radius:12px;padding:10px 14px}
@@ -403,7 +404,7 @@ svg path.bar{transform-box:fill-box;transform-origin:bottom;animation:growY .8s 
   .app.collapsed .side{padding:58px 0 18px 8px}
   .app.collapsed .side-toggle{right:auto;left:50%;margin-left:-15px;transform:rotate(180deg)}
   .app.collapsed .side-brand{padding:0 8px 18px 0}
-  .app.collapsed .side-brand .av{width:44px;height:44px;font-size:15px;margin-bottom:0;
+  .app.collapsed .side-brand .av{width:54px;height:46px;padding:6px;border-radius:15px;margin-bottom:0;
     box-shadow:0 0 0 2px var(--brand-yellow),0 0 0 5px rgba(255,213,0,.22)}
   .app.collapsed .side-brand .t,.app.collapsed .side-brand .s,.app.collapsed .side-brand .tags{display:none}
   .app.collapsed .side-nav button{justify-content:center;gap:0;padding:14px 0;border-radius:16px 0 0 16px}

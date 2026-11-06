@@ -1615,6 +1615,12 @@ document.getElementById('chipGer').textContent='Extraído do Jira em '+DT.gerado
   });
 })();
 
+/* icone da aba do navegador = o proprio logo embutido (sem arquivo extra) */
+(function(){
+  const im=document.getElementById('logoCvc'); if(!im) return;
+  const l=document.createElement('link'); l.rel='icon'; l.href=im.src; document.head.appendChild(l);
+})();
+
 /* ===== menu lateral recolhivel =====
    A escolha fica guardada no navegador. Ao trocar a largura, dispara um resize
    depois da animacao: os graficos medem o recipiente, entao se redesenham na

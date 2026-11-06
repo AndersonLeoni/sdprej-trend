@@ -74,7 +74,8 @@ function main() {
     .replace('@@CSS@@',  () => semQuebraFinal(read('src/app.css')))
     .replace('@@DATA@@', () => dados)
     .replace('@@JS@@',   () => semQuebraFinal(read('src/app.js')))
-    .replace('@@NOTA_DERIVA@@', () => notaDeriva(carimbos));
+    .replace('@@NOTA_DERIVA@@', () => notaDeriva(carimbos))
+    .replace('@@LOGOCVC@@', () => logoDataUri());
 
   const sobrou = html.match(/@@[A-Z]+@@/g);
   if (sobrou) {
@@ -110,6 +111,19 @@ function main() {
       process.exitCode = 1;
     }
   }
+}
+
+/**
+ * Logo da CVC embutido em base64: o entregavel e UM arquivo, sem imagem externa.
+ * O PNG e transparente (fundo branco removido) e fica em src/assets/.
+ */
+function logoDataUri() {
+  const arq = p('src', 'assets', 'logo-cvc.png');
+  if (!fs.existsSync(arq)) {
+    console.error('Falta src/assets/logo-cvc.png (logo da CVC usado no menu lateral).');
+    process.exit(1);
+  }
+  return 'data:image/png;base64,' + fs.readFileSync(arq).toString('base64');
 }
 
 /**
