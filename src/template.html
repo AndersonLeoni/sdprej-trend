@@ -41,6 +41,9 @@
     <button type="button" role="tab" id="tab-he" aria-selected="false" aria-controls="view-he">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/></svg>
       <span>Histórico encerrado</span></button>
+    <button type="button" role="tab" id="tab-fila" aria-selected="false" aria-controls="view-fila">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg>
+      <span>Fila de atuação</span></button>
   </nav>
   <div class="side-foot">
     <span class="side-clock" id="sideClock" role="img" aria-label="Data da extração">
@@ -684,6 +687,100 @@
   <b>Tema</b>, <b>Produto</b> e <b>Natureza</b> usam a mesma derivação por resumo das outras visões.<br>
   <b>Tempo até encerrar</b> usa o campo nativo <code>resolutiondate</code> do Jira; chamados sem essa data gravada
   não entram nessa média.
+</footer>
+</section>
+
+<!-- ==================== VIEW: FILA DE ATUACAO ==================== -->
+<section id="view-fila" role="tabpanel" aria-labelledby="tab-fila" hidden>
+
+<div class="hdr">
+  <h1>Fila de atuação</h1>
+  <div class="lead">
+    Os chamados de prejuízo <b>parados na etapa análise área responsável</b>, esperando tratativa da TI — o mesmo recorte do filtro
+    <b>TI SDPREJ - GERAL</b> nessa etapa. Na ordem de <b>prioridade sugerida</b>, vêm primeiro os chamados cujo <b>GDIS já foi encerrado</b>
+    (a causa técnica foi tratada e o chamado só espera análise) e, entre eles, os mais antigos. É uma fotografia da última extração:
+    para a fila ao vivo, use o botão <i>Abrir fila ao vivo no Jira</i>.
+  </div>
+</div>
+
+<div class="controls" role="group" aria-label="Filtros da fila de atuação">
+  <div><label for="qOrdem">Ordenar a fila por</label><select id="qOrdem">
+    <option value="prio" selected>Prioridade sugerida (GDIS encerrado, depois mais antigos)</option>
+    <option value="antigos">Mais antigos primeiro</option>
+    <option value="valor">Maior valor primeiro</option>
+    <option value="parados">Mais tempo sem movimentação</option>
+    <option value="custom" disabled>Personalizada (cabeçalho da tabela)</option></select></div>
+  <div><label for="qTema">Tema</label><select id="qTema"><option value="">Todos</option></select></div>
+  <div><label for="qProduto">Produto</label><select id="qProduto"><option value="">Todos</option></select></div>
+  <div><label for="qArea">Área identificadora</label><select id="qArea"><option value="">Todas</option></select></div>
+  <div><label for="qAging">Envelhecimento</label><select id="qAging"><option value="">Todos</option></select></div>
+  <div><label for="qGdis">Situação do GDIS</label><select id="qGdis"><option value="">Todas</option></select></div>
+  <div><label for="qParado">Sem movimentação há</label><select id="qParado">
+    <option value="">Qualquer tempo</option><option value="7">Mais de 7 dias</option><option value="30">Mais de 30 dias</option>
+    <option value="90">Mais de 90 dias</option><option value="180">Mais de 180 dias</option></select></div>
+  <div><label for="qBusca">Busca</label><input type="search" id="qBusca" placeholder="chave, GDIS, reserva, hotel…"></div>
+  <div class="sp"></div>
+  <div><button class="btn" id="q-clear">Limpar filtros</button></div>
+</div>
+
+<div class="kpis" id="q-kpis"></div>
+
+<div class="grid">
+  <section class="card">
+    <h2>Fila por faixa de idade</h2>
+    <div class="cs">Dias desde a abertura. Acima de 180 dias há risco de prescrição de análise.</div>
+    <div class="cw" id="q-ch-aging"></div>
+  </section>
+  <section class="card">
+    <h2>Fila por situação do GDIS</h2>
+    <div class="cs">Onde está a causa técnica de cada chamado. <b>Concluído / cancelado</b> = pronto para tratar. Clique para filtrar.</div>
+    <div class="hbars" id="q-ch-gdis"></div>
+  </section>
+  <section class="card wide">
+    <h2>Fila por tema</h2>
+    <div class="cs">Natureza do incidente, derivada do resumo. Clique para filtrar.</div>
+    <div class="hbars" id="q-ch-tema"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>A fila</h2>
+    <div class="cs" id="q-cs-fila">Um chamado por linha, na ordem escolhida. Clique no cabeçalho para ordenar, na chave para abrir no Jira.</div>
+    <div class="qbar">
+      <a class="btn" id="q-live" target="_blank" rel="noopener">Abrir fila ao vivo no Jira ↗</a>
+      <button class="btn" id="q-copy" type="button">Copiar chaves</button>
+      <button class="btn" id="q-jql" type="button">Copiar JQL</button>
+      <span class="qaviso" id="q-aviso" role="status" aria-live="polite"></span>
+    </div>
+    <div class="tbl">
+      <table class="dt" id="q-dt">
+        <thead><tr>
+          <th style="text-align:right">#</th>
+          <th data-s="k">Chave<span class="ar">↕</span></th>
+          <th data-s="summary">Resumo / tema<span class="ar">↕</span></th>
+          <th data-s="fornecedor">Fornecedor / hotel<span class="ar">↕</span></th>
+          <th data-s="diasAberto" style="text-align:right">Dias<span class="ar">↕</span></th>
+          <th data-s="parado" style="text-align:right">Sem mov.<span class="ar">↕</span></th>
+          <th data-s="valor" style="text-align:right">Valor R$<span class="ar">↕</span></th>
+          <th data-s="gcls">GDIS<span class="ar">↕</span></th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="tfoot">
+      <span id="q-count"></span>
+      <span><button class="btn" id="q-more">Mostrar mais 100</button>
+        <button class="btn" id="q-csv">Baixar CSV</button></span>
+    </div>
+  </section>
+</div>
+
+<footer>
+  Fonte: Jira Cloud CVC Corp &middot; <code>filter in ("10478") AND project = SDPREJ AND status = "análise área responsável"</code> —
+  a fila é exatamente esse resultado (conferido chave a chave contra o Jira na extração).<br>
+  <b>Prioridade sugerida</b> é uma regra simples, não um dado do Jira: GDIS encerrado (Fechado, Resolvido ou Cancelado) primeiro, porque a causa técnica
+  já foi tratada; dentro de cada grupo, o chamado mais antigo primeiro. <b>Sem mov.</b> = dias desde a última atualização do chamado no Jira (comentário,
+  campo ou status). <b>Dias</b> = idade desde a abertura.<br>
+  O Jira não atribui responsável a quase nenhum chamado desta fila (a fila é compartilhada e cada analista pega o chamado na hora), por isso o painel
+  não organiza a fila por pessoa. <b>Copiar JQL</b> gera <code>key in (…)</code> com os chamados que estão filtrados e na ordem da tela.
 </footer>
 </section>
 

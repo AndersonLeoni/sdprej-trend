@@ -416,5 +416,17 @@ svg path.bar{transform-box:fill-box;transform-origin:bottom;animation:growY .8s 
   .app.collapsed .side-foot .btn{padding:7px 0;text-align:center}
   .app.collapsed .side-foot .btn .lbl{display:none}
 }
+/* fila de atuacao: barra de acoes acima da tabela */
+.qbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.qbar .btn{font-weight:600}
+.qaviso{font-size:12px;color:var(--good);font-weight:600}
+.qaviso.err{color:var(--critical)}
+#q-dt th,#q-dt td{padding-left:9px;padding-right:9px}
+
+/* tela de SLA: campo numerico da meta e aviso de versao em validacao */
+input[type=number]{font:inherit;font-size:13px;color:var(--text-primary);background:var(--surface-1);
+  border:1px solid var(--baseline);border-radius:8px;padding:7px 9px;width:112px}
+.conf.val{border-left-color:var(--warning);background:color-mix(in srgb,var(--warning) 13%,transparent)}
+.conf.val b{color:var(--text-primary)}
 @media (max-width:980px){.side-toggle{display:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}

@@ -193,4 +193,4 @@ async function completarTruncados(issues) {
   }
 }
 
-module.exports = { montar, foco, ETAPA_ANALISE, ETAPA_CONFERENCIA };
+module.exports = { montar, foco, completarTruncados, ETAPA_ANALISE, ETAPA_CONFERENCIA };

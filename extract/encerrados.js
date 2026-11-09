@@ -28,7 +28,9 @@ const PROJETO = 'project = 10236';
 const ISSUETYPE = 'issuetype = "Prejuízo / não conformidade"';
 const DEPARTAMENTO = '"Departamento responsável (migrated)[Dropdown]" in ' +
   '("Fraude Prejuízo", "TI - prejuízo", "CVC - TI - Prejuízo")';
-const JQL_ENCERRADOS = `${PROJETO} AND ${ISSUETYPE} AND ${DEPARTAMENTO} AND statusCategory = Done`;
+/* mesmo universo SEM corte de status: usado tambem pela tela de SLA (extract/sla.js) */
+const JQL_BASE = `${PROJETO} AND ${ISSUETYPE} AND ${DEPARTAMENTO}`;
+const JQL_ENCERRADOS = `${JQL_BASE} AND statusCategory = Done`;
 
 const CAMPOS = [
   'key', 'summary', 'created', 'status', 'resolutiondate',
@@ -87,4 +89,4 @@ async function montar(cfg, agora = new Date()) {
   };
 }
 
-module.exports = { montar, JQL_ENCERRADOS, CAMPOS };
+module.exports = { montar, JQL_BASE, JQL_ENCERRADOS, CAMPOS };

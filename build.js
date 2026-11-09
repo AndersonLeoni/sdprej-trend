@@ -2,7 +2,7 @@
 /**
  * build.js — monta o painel unico e autocontido.
  *
- *   src/template.html  +  src/app.css  +  src/app.js  +  data/*.json
+ *   src/template.html  +  src/app.css  +  src/shared.js + src/app.js  +  data/*.json
  *        -> dist/SDPREJ_Painel.html
  *
  * O entregavel continua sendo UM arquivo, sem dependencia externa, que abre
@@ -17,6 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { logoDataUri } = require('./build-lib');
 
 const ROOT = __dirname;
 const p = (...a) => path.join(ROOT, ...a);
@@ -35,7 +36,7 @@ const DADOS = [
 ];
 
 function main() {
-  const faltando = ['src/template.html', 'src/app.css', 'src/app.js', ...DADOS.map(d => d.arq)]
+  const faltando = ['src/template.html', 'src/app.css', 'src/shared.js', 'src/app.js', ...DADOS.map(d => d.arq)]
     .filter(f => !fs.existsSync(p(f)));
   if (faltando.length) {
     console.error('Faltam arquivos:\n  ' + faltando.join('\n  '));
@@ -73,7 +74,7 @@ function main() {
   let html = read('src/template.html')
     .replace('@@CSS@@',  () => semQuebraFinal(read('src/app.css')))
     .replace('@@DATA@@', () => dados)
-    .replace('@@JS@@',   () => semQuebraFinal(read('src/app.js')))
+    .replace('@@JS@@',   () => semQuebraFinal(read('src/shared.js')) + EOL + semQuebraFinal(read('src/app.js')))
     .replace('@@NOTA_DERIVA@@', () => notaDeriva(carimbos))
     .replace('@@LOGOCVC@@', () => logoDataUri());
 
@@ -111,19 +112,6 @@ function main() {
       process.exitCode = 1;
     }
   }
-}
-
-/**
- * Logo da CVC embutido em base64: o entregavel e UM arquivo, sem imagem externa.
- * O PNG e transparente (fundo branco removido) e fica em src/assets/.
- */
-function logoDataUri() {
-  const arq = p('src', 'assets', 'logo-cvc.png');
-  if (!fs.existsSync(arq)) {
-    console.error('Falta src/assets/logo-cvc.png (logo da CVC usado no menu lateral).');
-    process.exit(1);
-  }
-  return 'data:image/png;base64,' + fs.readFileSync(arq).toString('base64');
 }
 
 /**

@@ -22,6 +22,7 @@ const CAMPOS = [
   'key', 'summary', 'created', 'status',
   D.CAMPO.problema, D.CAMPO.falha, D.CAMPO.valorFinal, D.CAMPO.valorInicial,
   D.CAMPO.fornecedor, D.CAMPO.cliente, D.CAMPO.areaFalha, D.CAMPO.ocorrencia,
+  'updated',                      /* fila de atuacao: ha quanto tempo ninguem mexe no chamado */
 ];
 
 async function montar(cfg, agora = new Date()) {
@@ -50,6 +51,11 @@ async function montar(cfg, agora = new Date()) {
       fornecedor: D.valorDe(f[D.CAMPO.fornecedor]),
       cliente: D.valorDe(f[D.CAMPO.cliente]),
       ocorrencia: D.valorDe(f[D.CAMPO.ocorrencia]),
+      /* parado = dias desde a ultima atualizacao do chamado, qualquer que seja (comentario, campo, status).
+         O assignee NAO entra: 675 de 681 chamados da fila nao tem responsavel no Jira — a fila e compartilhada
+         e cada analista pega o chamado na hora. */
+      atualizado: D.soData(f.updated),
+      parado: D.diasAberto(f.updated, agora.getTime()),
       /* problema nao vai para issues[]: e usado so na agregacao. A tabela do
          painel nao tem coluna para ele, e sao ~60 caracteres por chamado que
          nao seriam lidos por ninguem — 652 vezes isso e peso morto no arquivo. */

@@ -14,6 +14,14 @@ Cinco visões. As quatro primeiras compartilham o mesmo universo de backlog ativ
 | **Vínculo com GDIS** | universo inteiro | este prejuízo tem chamado de TI, e em que pé ele está |
 | **Ciclo de correção** | reagregação do payload de GDIS, por problema | de aberto a corrigido, quanto prejuízo cada fase ainda segura |
 | **Histórico encerrado** | mesmo projeto/tipo, `statusCategory = Done` (~4.454) | o que já foi resolvido/baixado — fora dos KPIs do backlog ativo de propósito |
+| **Fila de atuação** | os chamados da etapa `análise área responsável` (o filtro `10478` nessa etapa, ~680) | o que está pendente de tratativa da TI, em ordem de prioridade, para os analistas trabalharem |
+
+A **Fila de atuação** (sexta opção do menu) não tem extração própria: sai do mesmo payload da visão geral, acrescido do campo
+`updated` do Jira (dias sem movimentação). Confere chave a chave com o filtro no Jira. A **prioridade sugerida** é uma regra simples
+e declarada na tela, não um dado do Jira: chamados com **GDIS já encerrado** primeiro (a causa técnica foi tratada; hoje ~63% da fila),
+depois os mais antigos. O painel é uma fotografia da última extração, então a tela traz o botão **Abrir fila ao vivo no Jira**, além de
+**Copiar chaves** e **Copiar JQL** (`key in (…)`) do que está filtrado, na ordem da tela. O responsável do Jira **não** é usado: quase
+nenhum chamado da fila tem assignee (a fila é compartilhada e cada analista pega o chamado na hora).
 
 O filtro `10478` exclui por definição qualquer status encerrado (confirmado lendo a JQL completa do
 filtro pela API) — não é um corte de data, é de status. Por isso o histórico de anos anteriores
@@ -87,6 +95,51 @@ node build.js                só monta        -> dist/SDPREJ_Painel.html
 node verify.js               só confere      (não fala com o Jira)
 ```
 
+### Tela de SLA do ciclo (separada, só local por enquanto)
+
+```
+run-sla.cmd                  extrai todos os chamados (abertos + encerrados) e monta dist\SLA_Painel.html
+node extract/sla.js          só extrai       -> data/sla.json
+node build-sla.js            só monta        -> dist/SLA_Painel.html
+```
+
+Tela à parte do painel de prejuízo, no mesmo visual, para validação. **Não entra no `build.js` nem no
+fluxo do GitHub** — publicar é uma decisão posterior. Tem duas abas, cada uma com uma **meta em dias
+editável na própria tela**, em todo o período:
+
+- **Tempo de atuação** (abre primeiro): estimativa de quanto tempo alguém **trabalhou** em cada prejuízo, que é
+  diferente do tempo corrido (este inclui a espera: um chamado espera meses e é tratado em minutos). O Jira não
+  registra esforço, então são dois sinais, escolhidos na tela: o **ritmo entre ações** (minutos desde a ação anterior
+  do mesmo analista em outro chamado, dentro da mesma sessão de até 30 min — cobre ~83% da história, mediana ~6 min)
+  e as **horas apontadas** (lançamentos de horas do Tempo dentro da passagem — só desde ago/2026, em blocos de 15 min,
+  mediana ~30 min). Os dois discordam (o apontado é tipicamente ~5× o ritmo nas mesmas entregas) e **a realidade deve ficar
+  entre eles**: o apontado inclui trabalho fora do Jira; o ritmo não enxerga entregas isoladas, então tende a subestimar.
+  Entregas em lote (outra ação no mesmo minuto) não medem esforço. Uma entrega sem sinal fica **sem estimativa**, nunca
+  com um valor inventado.
+- **Tratativa (tempo corrido)** (meta padrão 30 dias): o tempo que a TI leva para atender cada
+  SDPREJ — da entrada do chamado na etapa `análise área responsável` até o analista entregá-lo à
+  `Conferência supervisão/gerência`, atribuído a quem entregou. Cada passagem é uma tratativa; o chamado que
+  volta da conferência gera uma nova (um *retorno*). Depois da entrega o prazo deixa de ser da TI.
+- **Capacidade por dia**: quantos SDPREJs a TI trata (entrega à conferência) por dia no ritmo **observado**
+  numa janela (30 a 365 dias, úteis ou corridos), contra quantos chegam por dia — chegada é a entrada na análise,
+  chamado novo ou retorno. Responde "quando a fila zera": fila de hoje ÷ (entregas − chegadas por dia), e qual
+  ritmo seria preciso para zerá-la num prazo escolhido. O resultado muda muito com a janela (em 2026-11, nos
+  últimos 30 dias entram mais do que saem; nos 90, sobra um pouco; nos 365, entra mais de novo), e a capacidade
+  recente está concentrada em poucos analistas. Capacidade aqui é ritmo, não limite: não desconta feriados,
+  férias nem entregas em lote.
+- **Ciclo do chamado** (meta padrão 90 dias): dias corridos entre a **abertura** e o **encerramento** (data de
+  resolução) do chamado inteiro, incluindo as etapas que não são da TI.
+
+A extração leva ~3 min porque lê o histórico de status dos ~6.000 chamados (`extract/tratativa.js`).
+A tratativa **inclui a espera na fila** antes de alguém pegar o chamado e atribui ao analista **quem moveu
+o chamado**: se um gestor entrega em lote, a conta cai nele. Separar "espera" de "execução" pediria o
+histórico de atribuição (`assignee`). A aba de tratativa mostra produtividade individual com nome (LGPD).
+
+A meta é parâmetro, não dado do Jira: os campos de SLA de prejuízo (`SLA PREJ COMERCIAL`,
+`SLA PREJ POS-TRAVEL`, `Time to resolution`) estão vazios nos 6.027 chamados e o Service Desk não devolve
+SLA para eles — por isso o SLA é calculado. Se a empresa tiver metas formais (talvez uma por área, como os
+nomes dos campos sugerem), a meta única vira uma tabela por área.
+
 Para atualizar todo dia automaticamente:
 
 ```
@@ -111,8 +164,16 @@ código muda.
 
 ```
 src/template.html      cabeçalho + marcação das 5 visões + marcadores @@...@@
-src/app.css            estilo
-src/app.js             render, filtros, ordenação, exportação CSV
+src/app.css            estilo (compartilhado com a tela de SLA e o painel Trend)
+src/shared.js          gráficos (barras, rosca, área), menu lateral, KPIs animados — usado pelas duas telas
+src/app.js             render, filtros, ordenação, exportação CSV do painel de prejuízo
+src/sla.template.html  tela de SLA do ciclo (separada)
+src/sla.js             cálculo e render do SLA, no navegador (a meta é editável)
+src/assets/            logo da CVC (PNG transparente, embutido em base64 no HTML)
+build-lib.js           peças comuns dos montadores (logo em base64)
+build-sla.js           monta a tela de SLA     -> dist/SLA_Painel.html
+extract/sla.js         monta o payload do SLA  -> data/sla.json
+extract/tratativa.js   passagens de um chamado pela etapa de análise (regra pura, com o histórico de status)
 extract/jira.js        transporte: auth, paginação, retentativa em 429/5xx
 extract/derive.js      regras de derivação (tema, produto, tipo, aging, valor, área, baldes de GDIS)
 extract/aggregate.js   agrupamento, top-N com "Outros", KPIs
