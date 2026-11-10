@@ -1,0 +1,4 @@
+git add .gitlab-ci.yml
+git commit -m "ci: pipeline do GitLab Pages"
+git remote add gitlab https://git.cvc.com.br/mtzcpd1276/sdprej-trend.git
+git push gitlab main
