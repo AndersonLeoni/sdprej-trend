@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Invoke-WebRequest:*)",
+      "PowerShell(git remote:*)",
+      "PowerShell(git push:*)",
+      "PowerShell(git add:*)",
+      "PowerShell(git commit:*)"
+    ]
+  }
+}
