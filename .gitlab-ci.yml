@@ -1,0 +1,22 @@
+# Equivalente GitLab do workflow .github/workflows/update-painel.yml
+# Extrai do Jira, compila o painel e publica no GitLab Pages (job "pages").
+# Variáveis necessárias (Settings > CI/CD > Variables, mascaradas): JIRA_EMAIL, JIRA_TOKEN
+# Roda por agendamento (Build > Pipeline schedules: "0 8 * * 1-5", fuso America/Sao_Paulo)
+# ou manualmente (Build > Pipelines > Run pipeline). Não roda a cada push, como no GitHub.
+
+pages:
+  image: node:18
+  stage: deploy
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  script:
+    - node extract/run.js
+    - node build.js
+    - mkdir -p public
+    - cp dist/SDPREJ_Painel.html public/index.html
+    - printf 'User-agent: *\nDisallow: /\n' > public/robots.txt
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
