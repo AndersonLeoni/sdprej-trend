@@ -7,6 +7,8 @@
 pages:
   image: node:18
   stage: deploy
+  tags:
+    - dind
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
     - if: '$CI_PIPELINE_SOURCE == "web"'
