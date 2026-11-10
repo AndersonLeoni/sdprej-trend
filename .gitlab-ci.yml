@@ -15,8 +15,9 @@ pages:
     - node build.js
     - mkdir -p public
     - cp dist/SDPREJ_Painel.html public/index.html
-    - printf 'User-agent: *\nDisallow: /\n' > public/robots.txt
+    - echo "User-agent:*" > public/robots.txt
+    - echo "Disallow:/" >> public/robots.txt
   artifacts:
     paths:
       - public
-    expire_in: 30 days
+    expire_in: never
