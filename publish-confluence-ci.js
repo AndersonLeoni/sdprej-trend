@@ -67,7 +67,9 @@ function montaMultipart(buf, comentario) {
     body: Buffer.concat([
       Buffer.from(`--${b}\r\nContent-Disposition: form-data; name="file"; filename="${NOME}"\r\nContent-Type: text/html\r\n\r\n`),
       buf, Buffer.from('\r\n'),
-      campo('comment', comentario), campo('minorEdit', 'true'),
+      // Sem campo "comment": o Confluence exige o mesmo numero de arquivos e comentarios
+      // (HTTP 400) e rejeitou o par que enviamos. O campo e opcional; so a data vai no log.
+      campo('minorEdit', 'true'),
       Buffer.from(`--${b}--\r\n`),
     ]),
   };
