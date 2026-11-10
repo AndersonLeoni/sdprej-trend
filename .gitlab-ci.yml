@@ -23,3 +23,18 @@ pages:
     paths:
       - public
     expire_in: never
+
+# Anexa o painel mais recente à página do Confluence (nova versão do mesmo anexo).
+# allow_failure: se o Confluence recusar (IP/permissão), o painel já publicado não é afetado.
+confluence:
+  image: node:18
+  stage: .post
+  needs: [pages]
+  allow_failure: true
+  tags:
+    - dind
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  script:
+    - node publish-confluence-ci.js public/index.html
