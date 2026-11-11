@@ -1,407 +1,235 @@
 #!/usr/bin/env node
 /**
- * generate-confluence-premium.js — Apresentação Premium SDPREJ
+ * generate-confluence-premium.js — página SDPREJ do Confluence
  *
- * Design profissional usando macros nativas do Confluence
- * Sem CSS customizado (não funciona bem no Confluence)
+ * Espelha a "Visão geral" do painel: todos os chamados do filtro TI nas TRÊS etapas
+ * (análise área responsável, Aprovação diretoria, Conferência supervisão/gerência).
+ * Mesmos números do painel, porque lê o mesmo data/temas.json.
+ *
+ * Visual: só macros nativas do Confluence (panel, section/column, status, toc, expand).
+ * CSS customizado não sobrevive ao editor do Confluence, então nada depende dele.
+ * O HTML gerado precisa ser XHTML válido (veja valida-xhtml.js).
  *
  * Uso: node generate-confluence-premium.js
  */
-
+'use strict';
 const fs = require('fs');
 const path = require('path');
 
-// URL do GitHub Pages — acessível publicamente
-const PAINEL_URL = 'https://AndersonLeoni.github.io/sdprej-trend/';
+const PAINEL_URL = 'https://AndersonLeoni.github.io/sdprej-trend/'; // ajuste se o painel mudar de endereço
+const JIRA = 'https://cvccorp.atlassian.net';
+const JQL_FILA = 'filter in ("10478") AND project = SDPREJ AND status = "análise área responsável"';
+const ETAPAS = ['análise área responsável', 'Aprovação diretoria', 'Conferência supervisão/gerência'];
+const ETAPA_COR = { 'análise área responsável': 'Blue', 'Aprovação diretoria': 'Yellow', 'Conferência supervisão/gerência': 'Green' };
 
-/* O payload de temas agora cobre 3 etapas (pedido da diretoria para o painel).
-   A pagina do Confluence continua falando so da fila de "analise area
-   responsavel", entao o recorte e refeito aqui — os numeros dela nao mudam. */
-const DT = (() => {
-  const A = require('./extract/aggregate');
-  const bruto = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'temas.json'), 'utf8'));
-  const issues = bruto.issues.filter(i => i.status === 'análise área responsável');
-  const val = i => i.valor;
-  return {
-    ...bruto,
-    issues,
-    kpis: {
-      ...bruto.kpis,
-      total: issues.length,
-      valorTotal: A.soma(issues.map(val)),
-      acima180d: issues.filter(i => i.diasAberto > 180).length,
-    },
-    temas: A.agregar(issues, i => i.temaDerivado, val, A.LIMITE.temas),
-  };
-})();
-const DA = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'analistas.json'), 'utf8'));
-const GD = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'gdis.json'), 'utf8'));
+const rd = f => JSON.parse(fs.readFileSync(path.join(__dirname, 'data', f), 'utf8'));
+const DT = rd('temas.json');
+const DA = rd('analistas.json');
+const GD = rd('gdis.json');
 
-const nfBRL = v => new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL', maximumFractionDigits: 0}).format(v);
+/* ---------- formatação ---------- */
+const nfBRL = v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v);
 const nfInt = v => new Intl.NumberFormat('pt-BR').format(Math.round(v));
-const esc = s => String(s || '').replace(/[&<>"]/g, c => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
-}[c]));
+const pc = (a, b) => (b ? (a / b * 100).toFixed(1).replace('.', ',') + '%' : '0%');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const soma = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
+const bar = p => '█'.repeat(Math.max(1, Math.round(p * 20)));      // barra de dados em texto
+const link = k => `<a href="${JIRA}/browse/${esc(k)}"><strong>${esc(k)}</strong></a>`;
+const dataBR = s => { const m = /^(\d{4})-(\d\d)-(\d\d)(?: (\d\d:\d\d))?/.exec(s || ''); return m ? `${m[3]}/${m[2]}/${m[1]}${m[4] ? ' ' + m[4] : ''}` : s; };
 
-const filaTotal = DA.fila.reduce((s, f) => s + f.valor, 0);
-const pcn = (a, b) => b ? (a / b * 100).toFixed(1).replace('.', ',') : '0';
-
-/* ---- ciclo de correção: reagrega GD por PROBLEMA (um GDIS) --------------
-   Mesma lógica da quarta visão do painel. Nenhuma consulta nova: o status
-   real de cada GDIS já vem no payload. */
-const FASE_LBL = {
-  pen: 'Aberto / pendente', n1: 'Em correção · Nível 1', n2: 'Em correção · Nível 2',
-  n3: 'Em correção · Nível 3', usr: 'Aguardando validação do usuário',
-  fim: 'Corrigido', nf: 'GDIS não localizado',
+/* ---------- blocos de layout (macros nativas) ---------- */
+const lozenge = (txt, cor) => `<ac:structured-macro ac:name="status"><ac:parameter ac:name="colour">${cor}</ac:parameter><ac:parameter ac:name="title">${esc(txt)}</ac:parameter></ac:structured-macro>`;
+const painel = (corpo, borda, fundo) => `<ac:structured-macro ac:name="panel"><ac:parameter ac:name="borderColor">${borda}</ac:parameter><ac:parameter ac:name="bgColor">${fundo}</ac:parameter><ac:rich-text-body>${corpo}</ac:rich-text-body></ac:structured-macro>`;
+const TOM = {
+  azul:    ['#0B5FA5', '#E8F1FA'], amarelo: ['#C9A400', '#FFF8D6'], vermelho: ['#C62828', '#FDECEC'],
+  verde:   ['#2E7D32', '#E9F5EA'], cinza:   ['#8A94A6', '#F4F6F9'],
 };
+const card = (rotulo, valor, legenda, tom) => painel(
+  `<p style="text-align: center;"><strong>${esc(rotulo.toUpperCase())}</strong></p>` +
+  `<h3 style="text-align: center;">${esc(valor)}</h3>` +
+  `<p style="text-align: center;">${esc(legenda)}</p>`, ...TOM[tom]);
+const colunas = (itens) => `<ac:structured-macro ac:name="section"><ac:rich-text-body>${itens.map(c =>
+  `<ac:structured-macro ac:name="column"><ac:parameter ac:name="width">${(100 / itens.length).toFixed(1)}%</ac:parameter><ac:rich-text-body>${c}</ac:rich-text-body></ac:structured-macro>`).join('')}</ac:rich-text-body></ac:structured-macro>`;
+const tabela = (cab, linhas) => `<table><tbody><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr>${linhas.map(l => `<tr>${l.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+const dir = h => `<p style="text-align: right;">${h}</p>`;
+const expande = (titulo, corpo) => `<ac:structured-macro ac:name="expand"><ac:parameter ac:name="title">${esc(titulo)}</ac:parameter><ac:rich-text-body>${corpo}</ac:rich-text-body></ac:structured-macro>`;
+const aviso = (titulo, corpo, tipo = 'info') => `<ac:structured-macro ac:name="${tipo}"><ac:parameter ac:name="title">${esc(titulo)}</ac:parameter><ac:rich-text-body>${corpo}</ac:rich-text-body></ac:structured-macro>`;
+
+/* ---------- números (mesma fonte da Visão geral) ---------- */
+const K = DT.kpis, I = DT.issues;
+const T = K.total, V = K.valorTotal;
+const porEtapa = ETAPAS.map(e => {
+  const g = I.filter(i => i.status === e);
+  return { nome: e, n: g.length, v: soma(g, i => i.valor), a180: g.filter(i => i.diasAberto > 180).length,
+           idade: g.length ? soma(g, i => i.diasAberto) / g.length : 0 };
+});
+const fila = I.filter(i => i.status === ETAPAS[0]);
+
+/* ---------- GDIS / ciclo de correção (mesma lógica das visões do painel) ---------- */
+const FASE_LBL = { pen: 'Aberto / pendente', n1: 'Em correção · Nível 1', n2: 'Em correção · Nível 2', n3: 'Em correção · Nível 3',
+                   usr: 'Aguardando validação do usuário', fim: 'Corrigido', nf: 'GDIS não localizado' };
 const FASE_ORDEM = ['pen', 'n1', 'n2', 'n3', 'usr', 'fim', 'nf'];
-const FASE_COR = {
-  pen: '#e65100', n1: '#1565c0', n2: '#1565c0', n3: '#c62828',
-  usr: '#e65100', fim: '#2e7d32', nf: '#666',
-};
+const FASE_COR = { pen: 'Yellow', n1: 'Blue', n2: 'Blue', n3: 'Red', usr: 'Yellow', fim: 'Green', nf: 'Grey' };
 const DE_BALDE = { pen: 'pen', n1: 'n1', n2: 'n2', n3: 'n3', usr: 'usr', res: 'fim', can: 'fim', des: 'fim', nf: 'nf' };
 
+const faseDaChave = new Map();                       // SDPREJ-n -> fase do GDIS vinculado
 const problemas = (() => {
   const m = new Map();
   for (const r of GD.rows) {
+    faseDaChave.set('SDPREJ-' + r[0], DE_BALDE[r[8]] || 'nf');
     const chave = String(r[7] || '').trim();
     if (!/^GDIS-\d+$/.test(chave)) continue;
     let e = m.get(chave);
-    if (!e) {
-      e = { gdis: chave, gstat: r[9] >= 0 ? GD.gsts[r[9]] : '', fase: DE_BALDE[r[8]] || 'nf',
-            keys: [], qtd: 0, valor: 0, dias: 0, _t: new Map() };
-      m.set(chave, e);
-    }
-    e.keys.push('SDPREJ-' + r[0]);
+    if (!e) { e = { gdis: chave, fase: DE_BALDE[r[8]] || 'nf', qtd: 0, valor: 0, dias: 0, _t: new Map() }; m.set(chave, e); }
     e.qtd++; e.valor += r[4];
     if (r[5] > e.dias) e.dias = r[5];
-    const t = GD.temas[r[2]];
-    e._t.set(t, (e._t.get(t) || 0) + 1);
+    const t = GD.temas[r[2]]; e._t.set(t, (e._t.get(t) || 0) + 1);
   }
   return [...m.values()].map(e => {
     e.tema = [...e._t.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))[0][0];
-    delete e._t;
-    return e;
+    delete e._t; return e;
   });
 })();
-
 const probTotal = problemas.length;
 const probCorrigidos = problemas.filter(p => p.fase === 'fim');
 const probAbertos = problemas.filter(p => p.fase !== 'fim');
 const probEmCorrecao = problemas.filter(p => ['n1', 'n2', 'n3'].includes(p.fase));
 const probN3 = problemas.filter(p => p.fase === 'n3');
-const valorRetido = probAbertos.reduce((s, p) => s + p.valor, 0);
-const valorDestravado = probCorrigidos.reduce((s, p) => s + p.valor, 0);
+const valorRetido = soma(probAbertos, p => p.valor);
+const valorDestravado = soma(probCorrigidos, p => p.valor);
 
-let html = `<p><strong>📊 SDPREJ — Dashboard de Prejuízos</strong></p>
-<p style="font-size: 12px; color: #666;">Trend Operadora — Gestão Centralizada de Reclamações e Análise de Risco | 📅 ${new Date().toLocaleString('pt-BR')} | 🔄 Atualização Automática: Diária</p>
+const prontos = fila.filter(i => faseDaChave.get(i.key) === 'fim');
+const filaSup = DA.fila;
+const filaSupTotal = soma(filaSup, f => f.valor);
+const gdTotalV = soma(GD.rows, r => r[4]);
 
-<h2 style="color: #003366; border-left: 4px solid #FF6B35; padding-left: 12px; margin-top: 16px;">📊 RESUMO EXECUTIVO — KPIs PRINCIPAIS</h2>
+/* ---------- documento ---------- */
+const partes = [];
+const add = h => partes.push(h);
 
-<table style="width: 100%; border-spacing: 8px; border-collapse: separate;">
-<tbody>
-<tr>
-<td style="background: #e3f2fd; border-left: 4px solid #1976d2; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 28px; font-weight: bold; color: #1565c0;">${nfInt(DT.kpis.total)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Chamados em Análise</strong></div>
-<div style="font-size: 10px; color: #666;">Status: Ativo</div>
-</td>
+add(`<p>${lozenge('DADOS EXTRAÍDOS DO JIRA EM ' + dataBR(DT.geradoEm), 'Blue')} ${lozenge('3 ETAPAS · TIME DE TI', 'Grey')}</p>`);
+add(`<p>Filtro <strong>TI SDPREJ - GERAL</strong> nas três etapas em que o chamado está com o time de TI: <strong>análise área responsável</strong>, <strong>Aprovação diretoria</strong> e <strong>Conferência supervisão/gerência</strong>. Os números desta página são os mesmos da <em>Visão geral</em> do painel interativo.</p>`);
+add(`<ac:structured-macro ac:name="toc"><ac:parameter ac:name="maxLevel">2</ac:parameter><ac:parameter ac:name="minLevel">2</ac:parameter></ac:structured-macro>`);
 
-<td style="background: #e8f5e9; border-left: 4px solid #388e3c; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 24px; font-weight: bold; color: #2e7d32;">${nfBRL(DT.kpis.valorTotal)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Valor Reclamado</strong></div>
-<div style="font-size: 10px; color: #666;">Total de Prejuízos</div>
-</td>
+/* 1. resumo */
+add(`<h2>Resumo executivo</h2>`);
+add(colunas([
+  card('Chamados no recorte', nfInt(T), 'somando as 3 etapas com a TI', 'azul'),
+  card('Prejuízo reclamado', nfBRL(V), 'soma de Prejuízo após Reversão', 'amarelo'),
+  card('Acima de 180 dias', nfInt(K.acima180d), `${pc(K.acima180d, T)} do recorte · risco de prescrição`, 'vermelho'),
+]));
+add(colunas([
+  card('Idade média', nfInt(K.idadeMedia) + ' dias', 'desde a abertura do SDPREJ', 'cinza'),
+  card('Valor mediano', nfBRL(K.valorMediana), 'metade dos casos vale menos que isso', 'cinza'),
+  card('Maior caso', nfBRL(K.valorMax), 'maior prejuízo individual do recorte', 'cinza'),
+]));
+add(aviso('Painel interativo completo',
+  `<p>Gráficos, filtros por tema, produto, área, período e etapa, fila de atuação e histórico encerrado estão no painel: ` +
+  `<a href="${PAINEL_URL}"><strong>abrir painel interativo</strong></a>. ` +
+  `O arquivo HTML da última atualização também fica anexado a esta página.</p>`, 'tip'));
 
-<td style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 28px; font-weight: bold; color: #c62828;">${nfInt(DT.kpis.acima180d)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Acima de 180 dias</strong></div>
-<div style="font-size: 10px; color: #c62828; font-weight: bold;">⚠️ RISCO DE PRESCRIÇÃO</div>
-</td>
+/* 2. por etapa */
+add(`<h2>Por etapa</h2>`);
+add(`<p>Onde está o prejuízo hoje: cada chamado está em exatamente uma das três etapas.</p>`);
+const maxEv = Math.max(...porEtapa.map(e => e.v));
+add(tabela(['Etapa', 'Chamados', '% dos chamados', 'Prejuízo R$', 'Acima de 180 dias', 'Idade média', 'Peso do valor'],
+  porEtapa.map(e => [lozenge(e.nome, ETAPA_COR[e.nome]), nfInt(e.n), pc(e.n, T), `<strong>${nfBRL(e.v)}</strong>`,
+    nfInt(e.a180) + ' (' + pc(e.a180, e.n) + ')', nfInt(e.idade) + ' dias', bar(e.v / maxEv)])
+  .concat([[`<strong>Total</strong>`, `<strong>${nfInt(T)}</strong>`, '100%', `<strong>${nfBRL(V)}</strong>`,
+    `<strong>${nfInt(K.acima180d)}</strong>`, `<strong>${nfInt(K.idadeMedia)} dias</strong>`, '']])));
 
-<td style="background: #fff3e0; border-left: 4px solid #f57c00; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 28px; font-weight: bold; color: #e65100;">${nfInt(DA.fila.length)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Parados em TI</strong></div>
-<div style="font-size: 10px; color: #e65100; font-weight: bold;">🔴 CRÍTICO</div>
-</td>
+/* 3. natureza */
+add(`<h2>Natureza do prejuízo</h2>`);
+add(`<p>Separa falha técnica de falha de processo. É uma <strong>proposta de classificação por tema</strong> (regra revisável, não é um campo do Jira). Cancelamento sem integração fica em "Ambíguo" de propósito: exige análise caso a caso.</p>`);
+const TIPO_COR = { 'Falha técnica (sistema/integração)': 'Red', 'Processo / decisão humana': 'Blue', 'Ambíguo (requer análise caso a caso)': 'Yellow', 'Não classificado': 'Grey' };
+add(tabela(['Natureza', 'Chamados', '% dos chamados', 'Prejuízo R$', '% do valor', 'Peso do valor'],
+  DT.tipos.map(t => [lozenge(t.name, TIPO_COR[t.name] || 'Grey'), nfInt(t.count), pc(t.count, T), `<strong>${nfBRL(t.valor)}</strong>`, pc(t.valor, V), bar(t.valor / V)])));
 
-<td style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 24px; font-weight: bold; color: #c62828;">${nfBRL(filaTotal)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Valor Retido</strong></div>
-<div style="font-size: 10px; color: #c62828; font-weight: bold;">💔 BLOQUEADO</div>
-</td>
+/* 4. tema / produto / aging */
+add(`<h2>Temas, produtos e envelhecimento</h2>`);
+add(`<h3>Por tema</h3>`);
+add(tabela(['Tema', 'Chamados', 'Prejuízo R$', '% do valor', 'Peso do valor'],
+  DT.temas.map(t => [esc(t.name), nfInt(t.count), `<strong>${nfBRL(t.valor)}</strong>`, pc(t.valor, V), bar(t.valor / V)])));
+add(`<h3>Por produto</h3>`);
+add(`<p>O produto é inferido do resumo do chamado (texto livre), então "Não identificado" é esperado.</p>`);
+add(tabela(['Produto', 'Chamados', 'Prejuízo R$', '% do valor', 'Peso do valor'],
+  DT.produto.map(t => [esc(t.name), nfInt(t.count), `<strong>${nfBRL(t.valor)}</strong>`, pc(t.valor, V), bar(t.valor / V)])));
+add(`<h3>Envelhecimento do backlog</h3>`);
+add(tabela(['Faixa de idade', 'Chamados', '% dos chamados', 'Prejuízo R$', 'Peso dos chamados'],
+  DT.aging.map(t => [esc(t.name), nfInt(t.count), pc(t.count, T), `<strong>${nfBRL(t.valor)}</strong>`, bar(t.count / T)])));
 
-<td style="background: #f3e5f5; border-left: 4px solid #7b1fa2; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 28px; font-weight: bold; color: #6a1b9a;">${nfInt(DA.ciclos.length)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Ciclos Concluídos</strong></div>
-<div style="font-size: 10px; color: #666;">Análises Entregues</div>
-</td>
-</tr>
-</tbody>
-</table>
+/* 5. maiores casos */
+add(`<h2>Dez maiores prejuízos</h2>`);
+add(tabela(['Chave', 'Resumo', 'Tema', 'Etapa', 'Dias', 'Valor R$'],
+  [...I].sort((a, b) => b.valor - a.valor).slice(0, 10).map(i => [
+    link(i.key), esc(String(i.summary || '').slice(0, 60)), esc(i.temaDerivado), lozenge(i.status, ETAPA_COR[i.status] || 'Grey'),
+    i.diasAberto > 180 ? `<strong>${nfInt(i.diasAberto)}d</strong>` : nfInt(i.diasAberto) + 'd', `<strong>${nfBRL(i.valor)}</strong>`])));
 
-<ac:structured-macro ac:name="tip">
-<ac:parameter ac:name="title">✅ PAINEL INTERATIVO DISPONÍVEL</ac:parameter>
-<ac:rich-text-body>
-<p><strong>Acesse o painel completo com gráficos dinâmicos, filtros interativos e análises em tempo real.</strong></p>
-<p style="margin: 12px 0 0 0;">
-<a href="${PAINEL_URL}" target="_blank" style="display: inline-block; background: #003366; color: white; padding: 10px 20px; border-radius: 4px; font-weight: bold; font-size: 14px; text-decoration: none;">→ ABRIR PAINEL INTERATIVO</a>
-</p>
-<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Quatro visões: Temas • Vínculo com GDIS • Por analista • <strong>Ciclo de correção</strong> | Filtros • Gráficos • CSV</p>
-</ac:rich-text-body>
-</ac:structured-macro>
+/* 6. fila de atuação */
+add(`<h2>Fila de atuação — análise área responsável</h2>`);
+add(`<p>Chamados aguardando análise do time de TI (<a href="${JIRA}/issues/?jql=${encodeURIComponent(JQL_FILA)}">abrir no Jira</a>). Os <strong>prontos para tratar</strong> têm o GDIS vinculado já encerrado: a causa técnica foi resolvida e o chamado só espera análise.</p>`);
+add(colunas([
+  card('Chamados na fila', nfInt(fila.length), nfBRL(soma(fila, i => i.valor)) + ' em prejuízo', 'azul'),
+  card('Prontos para tratar', nfInt(prontos.length), `GDIS encerrado · ${nfBRL(soma(prontos, i => i.valor))}`, 'verde'),
+  card('Acima de 180 dias', nfInt(fila.filter(i => i.diasAberto > 180).length), 'risco de prescrição', 'vermelho'),
+  card('Sem movimento > 30 dias', nfInt(fila.filter(i => i.parado > 30).length), 'parados no Jira', 'amarelo'),
+]));
+add(`<h3>Prontos mais antigos (dez primeiros)</h3>`);
+add(tabela(['Chave', 'Resumo', 'Dias', 'Sem mov.', 'Valor R$'],
+  [...prontos].sort((a, b) => b.diasAberto - a.diasAberto || b.valor - a.valor).slice(0, 10).map(i => [
+    link(i.key), esc(String(i.summary || '').slice(0, 60)), nfInt(i.diasAberto) + 'd', nfInt(i.parado) + 'd', `<strong>${nfBRL(i.valor)}</strong>`])));
 
-<hr/>
+/* 7. analistas */
+add(`<h2>Analistas — conferência supervisão/gerência</h2>`);
+add(`<p><strong>${nfInt(filaSup.length)}</strong> chamados aguardando supervisão · valor retido <strong>${nfBRL(filaSupTotal)}</strong>.</p>`);
+const FAIXAS = [['0-30 dias', 0, 30], ['31-90 dias', 31, 90], ['91-180 dias', 91, 180], ['181+ dias', 181, Infinity]];
+add(tabela(['Tempo na fila', 'Chamados', 'Valor R$', 'Peso dos chamados'],
+  FAIXAS.map(([nome, lo, hi]) => { const g = filaSup.filter(f => f.diasNaFila >= lo && f.diasNaFila <= hi);
+    return [nome, nfInt(g.length), `<strong>${nfBRL(soma(g, f => f.valor))}</strong>`, bar(g.length / (filaSup.length || 1))]; })));
+add(expande('Dez maiores tempos de espera', tabela(['Chave', 'Enviado por', 'Dias', 'Valor R$'],
+  [...filaSup].sort((a, b) => b.diasNaFila - a.diasNaFila).slice(0, 10).map(f => [
+    link(f.key), esc(f.enviadoPor), nfInt(f.diasNaFila) + 'd', `<strong>${nfBRL(f.valor)}</strong>`]))));
 
-<h1>📋 VISÃO 1: TEMAS</h1>
-<p>Distribuição dos chamados pelo padrão derivado e valor reclamado.</p>
+/* 8. GDIS */
+add(`<h2>Vínculo com GDIS</h2>`);
+const porSit = new Map();
+GD.rows.forEach(r => { const l = r[9] >= 0 ? GD.gsts[r[9]] : 'Sem classificação'; const e = porSit.get(l) || { n: 0, v: 0 }; e.n++; e.v += r[4]; porSit.set(l, e); });
+add(tabela(['Situação do GDIS', 'Chamados', 'Prejuízo R$', '% do valor'],
+  [...porSit.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10).map(([l, e]) => [esc(l), nfInt(e.n), `<strong>${nfBRL(e.v)}</strong>`, pc(e.v, gdTotalV)])));
+const multi = problemas.filter(p => p.qtd > 1).sort((a, b) => b.qtd - a.qtd).slice(0, 10);
+add(expande('GDIS com mais chamados vinculados', tabela(['GDIS', 'Chamados vinculados', 'Prejuízo R$'],
+  multi.map(p => [link(p.gdis), nfInt(p.qtd), `<strong>${nfBRL(p.valor)}</strong>`]))));
 
-<h3>Classificação por Tema</h3>
-<table>
-<tbody>
-<tr><th>Tema</th><th>Chamados</th><th>Valor Reclamado</th><th>% Total</th></tr>
-${DT.temas.map(t => `
-<tr>
-<td>${esc(t.name)}</td>
-<td>${nfInt(t.count)}</td>
-<td style="text-align: right;"><strong>${nfBRL(t.valor)}</strong></td>
-<td style="text-align: right;">${((t.valor / DT.kpis.valorTotal) * 100).toFixed(1)}%</td>
-</tr>`).join('')}
-</tbody>
-</table>
+/* 9. ciclo de correção */
+add(`<h2>Ciclo de correção do problema</h2>`);
+add(`<p>De <strong>aberto</strong> a <strong>corrigido</strong>: em que fase está cada problema de TI que originou prejuízo. A unidade aqui é o <strong>problema</strong> (um GDIS), não o chamado, por isso estes totais não fecham com os das seções anteriores.</p>`);
+add(colunas([
+  card('Problemas corrigidos', nfInt(probCorrigidos.length), pc(probCorrigidos.length, probTotal) + ' de ' + nfInt(probTotal) + ' rastreados', 'verde'),
+  card('Em correção', nfInt(probEmCorrecao.length), 'análise técnica em curso', 'amarelo'),
+  card('No Nível 3', nfInt(probN3.length), 'gargalo', 'vermelho'),
+]));
+add(colunas([
+  card('Prejuízo retido', nfBRL(valorRetido), nfInt(soma(probAbertos, p => p.qtd)) + ' SDPREJ travados', 'vermelho'),
+  card('Prejuízo destravado', nfBRL(valorDestravado), nfInt(soma(probCorrigidos, p => p.qtd)) + ' SDPREJ liberados', 'verde'),
+]));
+add(tabela(['Fase', 'Problemas', '% do total', 'SDPREJ vinculados', 'Prejuízo R$'],
+  FASE_ORDEM.map(c => { const g = problemas.filter(p => p.fase === c); if (!g.length) return null;
+    return [lozenge(FASE_LBL[c], FASE_COR[c]), nfInt(g.length), pc(g.length, probTotal), nfInt(soma(g, p => p.qtd)), `<strong>${nfBRL(soma(g, p => p.valor))}</strong>`]; })
+  .filter(Boolean)
+  .concat([[`<strong>Total</strong>`, `<strong>${nfInt(probTotal)}</strong>`, '100%', `<strong>${nfInt(soma(problemas, p => p.qtd))}</strong>`, `<strong>${nfBRL(soma(problemas, p => p.valor))}</strong>`]])));
+add(`<h3>Onde corrigir devolve mais valor</h3>`);
+add(`<p>Problemas ainda não corrigidos, do que segura mais prejuízo para o que segura menos.</p>`);
+add(tabela(['Problema', 'Fase', 'Tema predominante', 'SDPREJ', 'Dias', 'Prejuízo retido R$'],
+  [...probAbertos].sort((a, b) => b.valor - a.valor).slice(0, 10).map(p => [
+    link(p.gdis), lozenge(FASE_LBL[p.fase], FASE_COR[p.fase]), esc(p.tema), nfInt(p.qtd), nfInt(p.dias) + 'd', `<strong>${nfBRL(p.valor)}</strong>`])));
+add(aviso('Onde ver o detalhe completo',
+  `<p>Esta página é o resumo. O detalhe navegável está na página <strong>"SDPREJ — Ciclo de Correção do Problema"</strong> (filha desta) e no painel interativo, com filtros, ordenação e download em CSV.</p>`));
 
-<h3>Top 10 Chamados por Valor</h3>
-<table>
-<tbody>
-<tr><th>Chave</th><th>Tema</th><th>Dias</th><th>Valor R$</th></tr>
-${DT.issues.sort((a, b) => b.valor - a.valor).slice(0, 10).map(i => {
-  const isAlert = i.diasAberto > 180;
-  return `<tr>
-<td><strong>${esc(i.key)}</strong></td>
-<td>${esc(i.temaDerivado.substring(0, 30))}</td>
-<td ${isAlert ? 'style="background: #ffe0e0; color: #c00; font-weight: bold;"' : ''}>${nfInt(i.diasAberto)}d</td>
-<td style="text-align: right;"><strong>${nfBRL(i.valor)}</strong></td>
-</tr>`;
-}).join('')}
-</tbody>
-</table>
+/* rodapé */
+add(`<hr/>`);
+add(`<p style="text-align: center;"><em>SDPREJ · Trend Operadora · atualização automática de segunda a sexta às 8h · versão 3.0 (3 etapas)</em></p>`);
 
-<hr/>
-
-<h1>👤 VISÃO 2: ANALISTAS</h1>
-<p><strong style="color: #c00;">⚠️ ${nfInt(DA.fila.length)} chamados aguardando supervisão</strong> • Valor retido: <strong>${nfBRL(filaTotal)}</strong></p>
-
-<h3>Maior Tempo de Espera (Top 10)</h3>
-<table>
-<tbody>
-<tr><th>Chave</th><th>Analista</th><th>Dias</th><th>Valor R$</th></tr>
-${DA.fila.sort((a, b) => b.diasNaFila - a.diasNaFila).slice(0, 10).map(f => {
-  const isAlert = f.diasNaFila > 180;
-  return `<tr>
-<td><strong>${esc(f.key)}</strong></td>
-<td>${esc(f.enviadoPor.substring(0, 20))}</td>
-<td ${isAlert ? 'style="background: #ffe0e0; color: #c00; font-weight: bold;"' : ''}>${nfInt(f.diasNaFila)}d</td>
-<td style="text-align: right;"><strong>${nfBRL(f.valor)}</strong></td>
-</tr>`;
-}).join('')}
-</tbody>
-</table>
-
-<h3>Fila por Faixa de Dias</h3>
-<table>
-<tbody>
-<tr><th>Faixa</th><th>Chamados</th><th>Valor Total</th></tr>
-${(() => {
-  const faixas = {
-    '0-30 dias': { n: 0, v: 0 },
-    '31-90 dias': { n: 0, v: 0 },
-    '91-180 dias': { n: 0, v: 0 },
-    '181+ dias': { n: 0, v: 0 }
-  };
-  DA.fila.forEach(f => {
-    let faixa;
-    if (f.diasNaFila <= 30) faixa = '0-30 dias';
-    else if (f.diasNaFila <= 90) faixa = '31-90 dias';
-    else if (f.diasNaFila <= 180) faixa = '91-180 dias';
-    else faixa = '181+ dias';
-    faixas[faixa].n++;
-    faixas[faixa].v += f.valor;
-  });
-  return Object.entries(faixas)
-    .map(([faixa, e]) => {
-      const isAlert = faixa === '181+ dias';
-      return `<tr ${isAlert ? 'style="background: #ffe0e0;"' : ''}>
-<td><strong>${faixa}</strong></td>
-<td>${nfInt(e.n)}</td>
-<td style="text-align: right; ${isAlert ? 'color: #c00; font-weight: bold;' : ''}"><strong>${nfBRL(e.v)}</strong></td>
-</tr>`;
-    }).join('');
-})()}
-</tbody>
-</table>
-
-<hr/>
-
-<h1>🔗 VISÃO 3: GDIS</h1>
-<p>Rastreamento de chamados vinculados a GDIS.</p>
-
-<h3>Situação dos GDIS</h3>
-<table>
-<tbody>
-<tr><th>Situação</th><th>Chamados</th><th>Valor R$</th><th>% Total</th></tr>
-${(() => {
-  const m = new Map();
-  GD.rows.forEach(r => {
-    const label = r[9] >= 0 ? GD.gsts[r[9]] : 'Sem classificação';
-    const e = m.get(label) || {n: 0, v: 0};
-    e.n++; e.v += r[4]; m.set(label, e);
-  });
-  return [...m.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10)
-    .map(([label, e]) => `<tr>
-<td>${esc(label)}</td>
-<td>${nfInt(e.n)}</td>
-<td style="text-align: right;"><strong>${nfBRL(e.v)}</strong></td>
-<td style="text-align: right;">${((e.v / DT.kpis.valorTotal) * 100).toFixed(1)}%</td>
-</tr>`)
-    .join('');
-})()}
-</tbody>
-</table>
-
-<h3>GDIS com Múltiplos Chamados</h3>
-<table>
-<tbody>
-<tr><th>GDIS</th><th>Chamados Vinculados</th><th>Valor Total</th></tr>
-${(() => {
-  const m = new Map();
-  GD.rows.filter(r => /^GDIS-\d+$/.test(r[7] || '')).forEach(r => {
-    const g = r[7];
-    const e = m.get(g) || {n: 0, v: 0};
-    e.n++; e.v += r[4]; m.set(g, e);
-  });
-  return [...m.entries()]
-    .filter(([, e]) => e.n > 1)
-    .sort((a, b) => b[1].n - a[1].n)
-    .slice(0, 10)
-    .map(([gdis, e]) => `<tr>
-<td><strong>${esc(gdis)}</strong></td>
-<td>${nfInt(e.n)} chamados</td>
-<td style="text-align: right;"><strong>${nfBRL(e.v)}</strong></td>
-</tr>`)
-    .join('');
-})()}
-</tbody>
-</table>
-
-<hr/>
-
-<h1>🔁 VISÃO 4: CICLO DE CORREÇÃO</h1>
-<p>De <strong>aberto</strong> a <strong>corrigido</strong>: em que fase está cada problema de TI que originou prejuízo, e quanto prejuízo cada fase ainda segura. A unidade aqui é o <strong>problema</strong> (um GDIS), não o chamado de prejuízo — por isso os totais desta seção não fecham com os das anteriores.</p>
-
-<table style="width: 100%; border-spacing: 8px; border-collapse: separate;">
-<tbody>
-<tr>
-<td style="background: #e8f5e9; border-left: 4px solid #388e3c; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 28px; font-weight: bold; color: #2e7d32;">${nfInt(probCorrigidos.length)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Problemas corrigidos</strong></div>
-<div style="font-size: 10px; color: #2e7d32; font-weight: bold;">${pcn(probCorrigidos.length, probTotal)}% de ${nfInt(probTotal)} rastreados</div>
-</td>
-
-<td style="background: #fff3e0; border-left: 4px solid #f57c00; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 28px; font-weight: bold; color: #e65100;">${nfInt(probEmCorrecao.length)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Em correção</strong></div>
-<div style="font-size: 10px; color: #666;">análise técnica em curso</div>
-</td>
-
-<td style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 28px; font-weight: bold; color: #c62828;">${nfInt(probN3.length)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>No Nível 3</strong></div>
-<div style="font-size: 10px; color: #c62828; font-weight: bold;">⚠️ GARGALO</div>
-</td>
-
-<td style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 20px; font-weight: bold; color: #c62828;">${nfBRL(valorRetido)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Prejuízo retido</strong></div>
-<div style="font-size: 10px; color: #666;">${nfInt(probAbertos.reduce((s, p) => s + p.qtd, 0))} SDPREJ travados</div>
-</td>
-
-<td style="background: #e8f5e9; border-left: 4px solid #388e3c; padding: 12px; border-radius: 4px; text-align: center;">
-<div style="font-size: 20px; font-weight: bold; color: #2e7d32;">${nfBRL(valorDestravado)}</div>
-<div style="font-size: 12px; color: #333; margin-top: 4px;"><strong>Prejuízo destravado</strong></div>
-<div style="font-size: 10px; color: #666;">${nfInt(probCorrigidos.reduce((s, p) => s + p.qtd, 0))} SDPREJ liberados</div>
-</td>
-</tr>
-</tbody>
-</table>
-
-<h3>Fases do problema — de aberto a corrigido</h3>
-<table>
-<tbody>
-<tr><th>Fase</th><th>Problemas</th><th>% do total</th><th>SDPREJ vinculados</th><th>Prejuízo R$</th></tr>
-${FASE_ORDEM.map(c => {
-  const g = problemas.filter(p => p.fase === c);
-  if (!g.length) return '';
-  return `<tr>
-<td><strong style="color: ${FASE_COR[c]};">${esc(FASE_LBL[c])}</strong></td>
-<td>${nfInt(g.length)}</td>
-<td style="text-align: right;">${pcn(g.length, probTotal)}%</td>
-<td style="text-align: right;">${nfInt(g.reduce((s, p) => s + p.qtd, 0))}</td>
-<td style="text-align: right;"><strong>${nfBRL(g.reduce((s, p) => s + p.valor, 0))}</strong></td>
-</tr>`;
-}).join('')}
-<tr style="background: #f5f5f5;">
-<td><strong>TOTAL</strong></td>
-<td><strong>${nfInt(probTotal)}</strong></td>
-<td style="text-align: right;"><strong>100%</strong></td>
-<td style="text-align: right;"><strong>${nfInt(problemas.reduce((s, p) => s + p.qtd, 0))}</strong></td>
-<td style="text-align: right;"><strong>${nfBRL(problemas.reduce((s, p) => s + p.valor, 0))}</strong></td>
-</tr>
-</tbody>
-</table>
-
-<h3>Fila de correção — onde corrigir devolve mais valor</h3>
-<p style="font-size: 12px; color: #666;">Problemas <strong>ainda não corrigidos</strong>, do que segura mais prejuízo para o que segura menos.</p>
-<table>
-<tbody>
-<tr><th>Problema</th><th>Fase</th><th>Tema predominante</th><th>SDPREJ</th><th>Dias</th><th>Prejuízo retido R$</th></tr>
-${[...probAbertos].sort((a, b) => b.valor - a.valor).slice(0, 10).map(p => `<tr>
-<td><a href="https://cvccorp.atlassian.net/browse/${esc(p.gdis)}"><strong>${esc(p.gdis)}</strong></a></td>
-<td style="color: ${FASE_COR[p.fase]}; font-weight: bold;">${esc(FASE_LBL[p.fase])}</td>
-<td>${esc(p.tema)}</td>
-<td style="text-align: right;">${nfInt(p.qtd)}</td>
-<td style="text-align: right;${p.dias > 365 ? ' color: #c62828; font-weight: bold;' : ''}">${nfInt(p.dias)}d</td>
-<td style="text-align: right; color: #c62828;"><strong>${nfBRL(p.valor)}</strong></td>
-</tr>`).join('')}
-</tbody>
-</table>
-
-<ac:structured-macro ac:name="tip">
-<ac:parameter ac:name="title">Onde ver o detalhe completo</ac:parameter>
-<ac:rich-text-body>
-<p>Esta seção é o resumo. O detalhe navegável está em dois lugares:</p>
-<ul>
-<li>A página <strong>"SDPREJ — Ciclo de Correção do Problema"</strong>, filha desta, com todas as fases e a lista completa do Nível 3.</li>
-<li>A aba <strong>"Ciclo de correção"</strong> do painel interativo, com filtros por fase e tema, ordenação por qualquer coluna e download em CSV.</li>
-</ul>
-</ac:rich-text-body>
-</ac:structured-macro>
-
-<hr/>
-
-<p style="font-size: 11px; color: #999; text-align: center; margin-top: 32px;">
-✅ Dashboard SDPREJ — Trend Operadora<br/>
-📊 Quatro visões: Temas · Vínculo com GDIS · Por analista · Ciclo de correção<br/>
-🔄 Painel atualizado automaticamente de segunda a sexta às 8:00<br/>
-Versão 2.1
-</p>
-`;
-
+const html = partes.join('\n');
 fs.writeFileSync(path.join(__dirname, 'confluence-content.html'), html, 'utf8');
-console.log('✅ confluence-content.html PREMIUM gerado!');
-console.log(`   ${(html.length / 1024).toFixed(1)} KB\n`);
-console.log('🎨 Agora com:');
-console.log('   ✓ Painel azul Trend no topo');
-console.log('   ✓ Layout compatível com Confluence');
-console.log('   ✓ Tabelas estruturadas');
-console.log('   ✓ Indicadores visuais (cores de alerta)\n');
-console.log('⏭️  Próxima etapa: node publish-confluence.js\n');
+console.log(`confluence-content.html gerado: ${(html.length / 1024).toFixed(1)} KB`);
+console.log(`  recorte: ${nfInt(T)} chamados · ${nfBRL(V)} · >180d ${nfInt(K.acima180d)} · fila ${nfInt(fila.length)} (${nfInt(prontos.length)} prontos)`);
