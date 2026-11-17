@@ -44,6 +44,9 @@
     <button type="button" role="tab" id="tab-fila" aria-selected="false" aria-controls="view-fila">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg>
       <span>Fila de atuação</span></button>
+    <button type="button" role="tab" id="tab-rv" aria-selected="false" aria-controls="view-rv">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20v-4.5h4.5"/><path d="M12 8.5v7M10 10.5h3a1.5 1.5 0 0 1 0 3h-2.5"/></svg>
+      <span>Reversão do prejuízo</span></button>
   </nav>
   <div class="side-foot">
     <span class="side-clock" id="sideClock" role="img" aria-label="Data da extração">
@@ -781,6 +784,128 @@
   campo ou status). <b>Dias</b> = idade desde a abertura.<br>
   O Jira não atribui responsável a quase nenhum chamado desta fila (a fila é compartilhada e cada analista pega o chamado na hora), por isso o painel
   não organiza a fila por pessoa. <b>Copiar JQL</b> gera <code>key in (…)</code> com os chamados que estão filtrados e na ordem da tela.
+</footer>
+</section>
+
+<!-- ==================== VIEW: REVERSAO DO PREJUIZO ==================== -->
+<section id="view-rv" role="tabpanel" aria-labelledby="tab-rv" hidden>
+
+<div class="hdr">
+  <h1>Reversão do prejuízo</h1>
+  <div class="lead">
+    Quanto do prejuízo inicial foi <b>revertido</b> (crédito recuperado com fornecedor, hotel ou companhia) e quanto
+    <b>entra de fato como prejuízo</b>. A conta fecha por chamado: <b>inicial = revertido + efetivo</b>. Cobre o ciclo completo
+    (em aberto + encerrados), porque a reversão acontece depois da abertura e o backlog ativo quase não tem crédito registrado.
+  </div>
+</div>
+
+<div class="controls" role="group" aria-label="Filtros da reversão do prejuízo">
+  <div><label for="rvSit">Situação</label><select id="rvSit">
+    <option value="">Todos</option><option value="1">Em aberto</option><option value="0">Encerrados</option></select></div>
+  <div><label for="rvAno">Ano de abertura</label><select id="rvAno"><option value="">Todos</option></select></div>
+  <div><label for="rvTema">Tema</label><select id="rvTema"><option value="">Todos</option></select></div>
+  <div><label for="rvProduto">Produto</label><select id="rvProduto"><option value="">Todos</option></select></div>
+  <div><label for="rvParecer">Parecer da área</label><select id="rvParecer"><option value="">Todos</option></select></div>
+  <div><label for="rvRev">Reversão</label><select id="rvRev">
+    <option value="">Todos</option><option value="com">Com reversão</option><option value="sem">Sem reversão</option></select></div>
+  <div><label for="rvBusca">Busca</label><input type="search" id="rvBusca" placeholder="chave ou fornecedor…"></div>
+  <div class="sp"></div>
+  <div><button class="btn" id="rv-clear">Limpar filtros</button></div>
+</div>
+
+<div class="kpis" id="rv-kpis"></div>
+
+<div class="grid">
+  <section class="card wide">
+    <h2>Do prejuízo inicial ao prejuízo efetivo</h2>
+    <div class="cs">A barra é o prejuízo inicial do recorte: a parte verde foi <b>revertida</b>, a parte amarela <b>entra como prejuízo de fato</b>.</div>
+    <div id="rv-bridge"></div>
+  </section>
+  <section class="card wide">
+    <h2>Reversão por ano de abertura</h2>
+    <div class="cs">Valor revertido e valor efetivo dos chamados abertos em cada ano. Clique no ano em "Taxa de reversão" para filtrar.</div>
+    <div class="cw" id="rv-ch-ano"></div>
+    <div class="legend" id="rv-lg-ano"></div>
+  </section>
+  <section class="card">
+    <h2>Taxa de reversão por ano</h2>
+    <div class="cs">Revertido ÷ inicial. Clique para filtrar o ano.</div>
+    <div class="hbars" id="rv-ch-taxa"></div>
+  </section>
+  <section class="card">
+    <h2>O que a área registrou no parecer</h2>
+    <div class="cs">Resultado da reversão segundo o parecer (texto livre, classificado por regra). Clique para filtrar.</div>
+    <div class="hbars" id="rv-ch-parecer"></div>
+  </section>
+  <section class="card wide">
+    <h2>Por tema &middot; prejuízo efetivo</h2>
+    <div class="cs">Onde o prejuízo fica depois da reversão. O texto da barra mostra quanto foi revertido. Clique para filtrar.</div>
+    <div class="hbars" id="rv-ch-tema"></div>
+  </section>
+  <section class="card">
+    <h2>Por produto</h2>
+    <div class="hbars" id="rv-ch-prod"></div>
+  </section>
+  <section class="card">
+    <h2>Fornecedor / hotel &middot; maior efetivo</h2>
+    <div class="cs">Os dez com mais prejuízo efetivo no recorte.</div>
+    <div class="hbars" id="rv-ch-forn"></div>
+  </section>
+  <section class="card">
+    <h2>Tentativas de reversão</h2>
+    <div class="cs">Chamados em que houve reversão, por número de tentativas registradas. Mais tentativas aumentam a taxa?</div>
+    <div class="hbars" id="rv-ch-tent"></div>
+  </section>
+  <section class="card">
+    <h2>Qualidade do dado</h2>
+    <div class="cs">O que impede medir a reversão com precisão — e por que este valor difere dos outros painéis.</div>
+    <div id="rv-qual"></div>
+  </section>
+
+  <section class="card wide" id="rv-status">
+    <h2>Status report &middot; principais causas e melhorias</h2>
+    <div class="cs">Resumo do ciclo completo (não muda com os filtros). Os números saem do próprio painel; o que é hipótese está marcado.</div>
+    <div class="qbar">
+      <button class="btn" id="rv-sr-copy" type="button">Copiar status report</button>
+      <span class="qaviso" id="rv-sr-aviso" role="status" aria-live="polite"></span>
+    </div>
+    <div class="sr" id="rv-sr"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Chamados</h2>
+    <div class="cs">Um chamado por linha. Padrão: maior prejuízo efetivo primeiro. Clique no cabeçalho para ordenar, na chave para abrir no Jira.</div>
+    <div class="tbl">
+      <table class="dt" id="rv-dt">
+        <thead><tr>
+          <th data-s="k">Chave<span class="ar">↕</span></th>
+          <th data-s="tema">Tema<span class="ar">↕</span></th>
+          <th data-s="forn">Fornecedor / hotel<span class="ar">↕</span></th>
+          <th data-s="ano" style="text-align:right">Ano<span class="ar">↕</span></th>
+          <th data-s="parecer">Parecer<span class="ar">↕</span></th>
+          <th data-s="tent" style="text-align:right">Tent.<span class="ar">↕</span></th>
+          <th data-s="ini" style="text-align:right">Inicial R$<span class="ar">↕</span></th>
+          <th data-s="rev" style="text-align:right">Revertido R$<span class="ar">↕</span></th>
+          <th data-s="efe" style="text-align:right">Efetivo R$<span class="ar">↕</span></th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="tfoot">
+      <span id="rv-count"></span>
+      <span><button class="btn" id="rv-more">Mostrar mais 100</button>
+        <button class="btn" id="rv-csv">Baixar CSV</button></span>
+    </div>
+  </section>
+</div>
+
+<footer>
+  Fonte: Jira Cloud CVC Corp &middot; mesmo universo da tela de SLA (<code>project = 10236</code>, tipo "Prejuízo / não conformidade", departamento TI/Fraude,
+  <b>sem corte de status</b>): em aberto + encerrados. Por isso o total de "em aberto" aqui é um pouco maior que o do filtro <code>10478</code> das outras abas
+  (inclui etapas como Aprovação Q&amp;P e validação de qualidade).<br>
+  <b>Inicial</b> = campo "Prejuízo inicial (R$)". <b>Revertido</b> = inicial − efetivo. <b>Efetivo</b> = "Prejuízo após Reversão" quando preenchido;
+  senão inicial − "Crédito recebido (R$)"; senão o inicial. Esse campo "após reversão" sozinho não é confiável (ver <i>Qualidade do dado</i>), por isso o
+  crédito recebido é tratado como o dado primário. <b>Parecer</b> e <b>Produto</b> são inferidos de texto livre por regra; o que a regra não reconhece cai
+  em "Outro texto".
 </footer>
 </section>
 

@@ -22,6 +22,12 @@ const CAMPO = {
   areaFalha:   'customfield_11054',  // Area identificadora (objeto com .value)
   departamento:'customfield_10885',
   ocorrencia:  'customfield_10973',  // n de ocorrencia — texto LIVRE
+  /* aba "Reversao" do formulario SDPREJ */
+  credito:     'customfield_10956',  // Credito recebido (R$): o que de fato foi revertido
+  tentativas:  'customfield_10971',  // Tentativas de reversao (lista: "0".."10")
+  parecerArea: 'customfield_10974',  // Parecer Reversao Area Responsavel (texto, chega em ADF)
+  reversaoSN:  'customfield_11017',  // "Reversao?" (lista) — hoje 100% vazio
+  categoriaPrej: 'customfield_15545', // "Categoria de Problema - Prejuizo" (lista) — hoje 100% vazio
 };
 
 /* ------------------------------------------------------------- tema ------- */
@@ -305,9 +311,73 @@ const TEMA_TIPO = {
 
 const classificaTemaTipo = tema => TEMA_TIPO[tema] || TIPO.OUTROS;
 
+/* ------------------------------------------------- reversao do prejuizo ------ */
+
+/**
+ * Campo de texto longo do Jira Cloud chega em ADF (documento JSON). Aqui so
+ * interessa o texto corrido.
+ */
+function adfTexto(n) {
+  if (n == null) return '';
+  if (typeof n === 'string') return n;
+  if (n.type === 'text') return n.text || '';
+  return (n.content || []).map(adfTexto).join(' ');
+}
+
+/**
+ * Prejuizo efetivo de um chamado = prejuizo inicial - o que foi revertido.
+ *
+ * "Prejuizo apos Reversao" (valorFinal) NAO e confiavel sozinho: em 3.434 de
+ * 3.448 chamados em que ele existe, e identico ao inicial (parece copiado, nao
+ * apurado), e 358 chamados encerrados tem Credito recebido mas o campo vazio.
+ * Onde as duas coisas existem, inicial - credito == apos reversao em 1.385 de
+ * 1.387 casos — entao o CREDITO e o dado primario da reversao.
+ *
+ * Ordem: apos reversao preenchido > inicial - credito > inicial.
+ * Limites: nunca abaixo de 0 nem acima do inicial (3 chamados tem valor maior
+ * que o inicial; ficam em "sem reversao" para a conta fechar: inicial = revertido + efetivo).
+ */
+function reversao(f) {
+  const I = typeof f[CAMPO.valorInicial] === 'number' ? f[CAMPO.valorInicial] : 0;
+  const F = typeof f[CAMPO.valorFinal] === 'number' ? f[CAMPO.valorFinal] : null;
+  const C = typeof f[CAMPO.credito] === 'number' ? f[CAMPO.credito] : null;
+  let efetivo = F != null ? F : (C > 0 ? I - C : I);
+  efetivo = Math.min(Math.max(efetivo, 0), I);
+  const sujo = (F != null && F > I + 0.01) || (C != null && C > I + 0.01);
+  return {
+    inicial: I,
+    revertido: Math.round((I - efetivo) * 100) / 100,
+    efetivo: Math.round(efetivo * 100) / 100,
+    oficial: valor(f),                                  // o que as outras visoes do painel somam
+    /* bits: 1 = "apos reversao" vazio; 2 = tem credito mas "apos reversao" vazio;
+       4 = valor incoerente (> inicial); 8 = "apos reversao" preenchido IGUAL ao inicial (sem reversao apurada) */
+    qualidade: (F == null ? 1 : 0) | (C > 0 && F == null ? 2 : 0) | (sujo ? 4 : 0) | (F != null && Math.abs(F - I) < 0.01 ? 8 : 0),
+  };
+}
+
+/**
+ * O que a area responsavel escreveu no parecer de reversao, em 5 classes.
+ * E INFERENCIA sobre texto livre (como tema() e produto()): os 2.004 pareceres
+ * existentes seguem poucos padroes, mas qualquer texto novo pode cair em "outro".
+ * A ordem importa: as negativas vem antes, senao "nao foi possivel maior reversao"
+ * seria lida como reversao concedida.
+ */
+const PARECER = ['Sem parecer', 'Reversão não obtida', 'Reversão concedida (parcial/máxima)', 'Sem prejuízo real / só reembolso', 'Outro texto'];
+function classificaParecer(texto) {
+  const s = normaliza(texto).toLowerCase();
+  if (!s.trim()) return 0;
+  if (/NAO (TEMOS|HA|HOUVE|TEM|GEROU).*(PREJUIZO|VALOR)|SEM PREJUIZO|BAIXA RENTABILIDADE|(SOMENTE|APENAS|PARA) REEMBOLS|SEM VALOR/i.test(s)) return 3;
+  if (/MAIOR REVERSAO|MAXIM.{0,12}REVERSAO|REVERSAO (PARCIAL|CONCEDID|REALIZADA)|ISENTOU A COBRANCA|VALOR MAIOR CONCEDIDO/i.test(s)
+      && !/NAO (FOI )?POSSIVEL MAIOR|NAO ISENTOU/i.test(s)) return 2;
+  if (/NAO (FOI )?(POSSIVEL|AUTORIZAD|PASSIVEL|CONSEGUIMOS|ACEIT|ISENTOU)|NAO AUTORIZOU|NAO TEMOS (REVERSAO|COBRANCA)|SEM REVERSAO|SEM RETORNO|NEGAD|RECUSAD|REVERSAO ENCERRADA/i.test(s)) return 1;
+  if (/REVERTID|REVERSAO|CREDITO/i.test(s)) return 2;
+  return 4;
+}
+
 module.exports = {
-  CAMPO, TEMA, FAIXAS_ORDEM, CLASSE, PRODUTO, TIPO,
+  CAMPO, TEMA, FAIXAS_ORDEM, CLASSE, PRODUTO, TIPO, PARECER,
   normaliza, tema, faixaAging, valor, valorDe, limpaArea, produto,
   diasAberto, soData, mes, carimbo,
   classificaOcorrencia, baldeStatus, classificaTemaTipo,
+  adfTexto, reversao, classificaParecer,
 };

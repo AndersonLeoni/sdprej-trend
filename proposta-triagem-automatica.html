@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta: triagem automática de chamados – Apoio Trend</title>
+<style>
+  :root { --ink:#1f2933; --muted:#52606d; --line:#d9e2ec; --accent:#0b5cad; --bg:#f5f7fa; --ok:#1b7f4b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 "Segoe UI", Arial, sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 32px 20px 56px; }
+  header { border-bottom: 3px solid var(--accent); padding-bottom: 16px; margin-bottom: 24px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0; }
+  h2 { font-size: 19px; margin: 32px 0 10px; color: var(--accent); }
+  section { background:#fff; border:1px solid var(--line); border-radius:8px; padding: 4px 22px 18px; margin-bottom: 16px; }
+  p, li { margin: 8px 0; }
+  ul, ol { padding-left: 22px; }
+  .resumo { background:#e8f1fb; border-left:4px solid var(--accent); padding: 12px 16px; border-radius:4px; margin: 16px 0 0; }
+  .fluxo { display:flex; flex-wrap:wrap; gap:10px; align-items:stretch; margin: 14px 0; }
+  .passo { flex:1 1 150px; border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:var(--bg); font-size:14.5px; }
+  .passo b { display:block; color:var(--accent); margin-bottom:2px; }
+  table { width:100%; border-collapse: collapse; margin: 10px 0; font-size:15px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { background:var(--bg); }
+  .tag { display:inline-block; font-size:12.5px; padding:1px 8px; border-radius:10px; background:#e3f4ea; color:var(--ok); font-weight:600; }
+  footer { color:var(--muted); font-size:13px; margin-top:24px; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Triagem automática de chamados para o Apoio Trend</h1>
+  <p class="sub">Proposta de melhoria de processo &nbsp;|&nbsp; Board Jira 10381 &nbsp;|&nbsp; Filtro 11362 (B2B – TREND APOIO – TICKET MANAGER)</p>
+  <p class="resumo"><b>Em uma frase:</b> um robô passa 3 vezes ao dia pelos chamados novos da fila Ticket Manager Trend, encaminha os que se encaixam em regras conhecidas ao <b>Apoio Trend</b> e move o status para <b>Em análise Nível 1</b>. O que ele não reconhecer fica onde está, para triagem manual.</p>
+</header>
+
+<section>
+  <h2>1. Situação atual</h2>
+  <ul>
+    <li>O encaminhamento ao Apoio Trend e a mudança para "Em análise Nível 1" são feitos <b>manualmente</b>, chamado a chamado.</li>
+    <li>Mais de 500 chamados passaram pelo componente Apoio Trend nos últimos 60 dias, então é uma tarefa repetitiva e recorrente.</li>
+    <li>Chamados novos esperam por alguém lembrar de olhar a fila. Isso atrasa o início da análise.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>2. O que será automatizado</h2>
+  <div class="fluxo">
+    <div class="passo"><b>1. Buscar</b>Chamados em <i>Aberto</i> com o componente <i>Ticket manager TREND</i>.</div>
+    <div class="passo"><b>2. Classificar</b>Compara o título com regras definidas a partir do histórico real.</div>
+    <div class="passo"><b>3. Encaminhar</b>Define o componente <i>Apoio Trend</i> e muda o status para <i>Em análise Nível 1</i>.</div>
+    <div class="passo"><b>4. Registrar</b>Deixa um comentário no chamado dizendo qual regra foi aplicada.</div>
+  </div>
+  <p>Chamados que não se encaixam em nenhuma regra <b>não são alterados</b>. Continuam em Aberto para a triagem de sempre.</p>
+</section>
+
+<section>
+  <h2>3. Execução 3 vezes ao dia</h2>
+  <ul>
+    <li>Usa o agendador do GitLab que já roda o painel SDPREJ, sem servidor novo e sem depender de máquina ligada.</li>
+    <li>Horários sugeridos (ajustáveis): <b>09h, 13h e 17h</b>, em dias úteis.</li>
+    <li>Cada execução só olha o que está em Aberto. Quem já foi encaminhado sai da busca, então <b>nada é processado duas vezes</b>.</li>
+    <li>Se uma execução falhar, a seguinte pega o que ficou para trás.</li>
+    <li>Um chamado que chegar logo após uma execução espera até cerca de 4 horas. Se isso for muito, basta aumentar a frequência (por exemplo, a cada 30 minutos). O custo é praticamente o mesmo, porque a fila é pequena.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>4. Cuidados e segurança</h2>
+  <table>
+    <tr><th>Risco</th><th>Como é tratado</th></tr>
+    <tr><td>Classificar errado</td><td>Só regras objetivas, baseadas em chamados que o time já encaminhou. Na dúvida, o robô não faz nada. Cada ação deixa comentário, e dá para reverter.</td></tr>
+    <tr><td>Mexer em chamados que não são do escopo</td><td>A busca é travada no componente Ticket manager TREND e no status Aberto. Os alertas automáticos (Zabbix, jobs) ficam de fora.</td></tr>
+    <tr><td>Credencial com poder de escrita</td><td>Token guardado como variável protegida do GitLab, nunca em arquivo do repositório. O ideal é um usuário de serviço com permissão apenas para comentar, alterar componente e transicionar.</td></tr>
+    <tr><td>Efeito inesperado na entrada em produção</td><td>Entrada em fases: primeiro só lê e lista o que faria, sem alterar nada.</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>5. Plano em fases</h2>
+  <table>
+    <tr><th>Fase</th><th>Entrega</th><th>Altera o Jira?</th></tr>
+    <tr><td>1</td><td>Análise do histórico de chamados já encaminhados, para definir as regras</td><td><span class="tag">Não</span></td></tr>
+    <tr><td>2</td><td>Simulação (dry-run): lista o que o robô faria, para validação do time por alguns dias</td><td><span class="tag">Não</span></td></tr>
+    <tr><td>3</td><td>Ativação das ações reais, 3x ao dia, com comentário em cada chamado</td><td>Sim</td></tr>
+    <tr><td>4</td><td>Indicador no painel: "classificados automaticamente hoje" (evidência do ganho)</td><td><span class="tag">Não</span></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>6. Resultado esperado</h2>
+  <ul>
+    <li>Menos trabalho manual repetitivo na triagem.</li>
+    <li>Início da análise mais rápido, com o chamado já na fila certa e no status certo.</li>
+    <li>Padronização: o mesmo tipo de chamado sempre é tratado do mesmo jeito.</li>
+    <li>Rastreabilidade: cada decisão automática fica registrada no próprio chamado.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>7. O que preciso para seguir</h2>
+  <ol>
+    <li><b>Aval</b> para iniciar as fases 1 e 2, que só leem dados.</li>
+    <li><b>Uma pessoa do Apoio Trend</b> para validar a lista da simulação.</li>
+    <li>Para a fase 3, <b>um usuário de serviço no Jira</b> com permissão de escrita limitada (a solicitar ao time responsável).</li>
+  </ol>
+</section>
+
+<footer>Elaborado por Anderson Leoni – Trend Operadora. Dados de volume obtidos do Jira em novembro/2026.</footer>
+
+</main>
+</body>
+</html>

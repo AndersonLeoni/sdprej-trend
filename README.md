@@ -15,6 +15,16 @@ Cinco visões. As quatro primeiras compartilham o mesmo universo de backlog ativ
 | **Ciclo de correção** | reagregação do payload de GDIS, por problema | de aberto a corrigido, quanto prejuízo cada fase ainda segura |
 | **Histórico encerrado** | mesmo projeto/tipo, `statusCategory = Done` (~4.454) | o que já foi resolvido/baixado — fora dos KPIs do backlog ativo de propósito |
 | **Fila de atuação** | os chamados da etapa `análise área responsável` (o filtro `10478` nessa etapa, ~680) | o que está pendente de tratativa da TI, em ordem de prioridade, para os analistas trabalharem |
+| **Reversão do prejuízo** | mesmo universo da tela de SLA: TI/Fraude, **sem corte de status** (~6.050: em aberto + encerrados) | quanto do prejuízo inicial foi revertido e quanto entra de fato como prejuízo, as causas e melhorias (status report) |
+
+A **Reversão do prejuízo** (sétima opção) tem extração própria (`extract/reversao.js` → `data/reversao.json`, formato colunar). Por chamado:
+**inicial = revertido + efetivo**. O dado primário da reversão é o **Crédito recebido** (`customfield_10956`); o campo "Prejuízo após Reversão" só
+vale quando preenchido, porque na prática ele é cópia do inicial em ~99% dos casos em que existe (regra em `derive.reversao`, com o porquê).
+Resultados que o painel expõe: a reversão aparece só nos chamados até 2020 (~46% do inicial) e é ~0% de 2021 em diante; ~97% dos encerrados
+recentes não têm parecer da área; e as outras abas somam ~R$ 6,1 mi **a mais** que o efetivo nos encerrados, porque 358 chamados têm crédito
+recebido mas "Prejuízo após Reversão" vazio (o painel não muda `D.valor()`; só mostra a diferença). A classificação do **parecer** da área
+(5 classes) e o **produto** são inferências de texto livre, como o tema. O bloco **Status report** (causas e melhorias) é gerado com os números
+do próprio painel, não muda com os filtros, e tem botão **Copiar status report** para Teams/e-mail.
 
 A **Fila de atuação** (sexta opção do menu) não tem extração própria: sai do mesmo payload da visão geral, acrescido do campo
 `updated` do Jira (dias sem movimentação). Confere chave a chave com o filtro no Jira. A **prioridade sugerida** é uma regra simples

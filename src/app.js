@@ -1474,6 +1474,239 @@ const ViewFila=(function(){
   return {render};
 })();
 
+/* ===================== VIEW: REVERSAO DO PREJUIZO =====================
+   Universo completo (aberto + encerrado) vindo de RV (extract/reversao.js).
+   Por chamado: inicial = revertido + efetivo. O "credito recebido" e o dado primario da reversao. */
+const ViewRV=(function(){
+  const $=id=>document.getElementById(id);
+  const DIC=RV.dic, PAR=DIC.pareceres;
+  const PAR_COR=['var(--neutral)','var(--critical)','var(--good)','var(--series-3)','var(--series-2)'];
+  const A=RV.rows.map(r=>({k:r[0],key:'SDPREJ-'+r[0],ab:r[1],tema:DIC.temas[r[2]],prod:DIC.prods[r[3]],forn:DIC.forns[r[5]],
+    ano:r[6],ini:r[7],rev:r[8],ofi:r[9],tent:r[10],pc:r[11],q:r[12],efe:Math.round((r[7]-r[8])*100)/100}));
+  const ANOS=[...new Set(A.map(o=>o.ano))].sort((a,b)=>a-b);
+  const S=(rs,f)=>rs.reduce((a,r)=>a+f(r),0);
+  const pct=(a,b)=>b?a/b*100:0;
+  const pc1=(a,b)=>nf1.format(pct(a,b))+'%';
+  const TEM_REV=r=>r.rev>0.005;
+  let sortKey='efe', sortDir=-1, shown=100, avisoT;
+
+  /* ---- filtros ---- */
+  const fill=(id,vals)=>vals.forEach(v=>{const o=document.createElement('option');o.value=v.v;o.textContent=v.t;$(id).appendChild(o);});
+  fill('rvAno',ANOS.slice().reverse().map(a=>({v:a,t:String(a)})));
+  fill('rvTema',[...new Set(A.map(o=>o.tema))].sort((a,b)=>a.localeCompare(b,'pt-BR')).map(t=>({v:t,t})));
+  fill('rvProduto',[...new Set(A.map(o=>o.prod))].sort((a,b)=>a.localeCompare(b,'pt-BR')).map(t=>({v:t,t})));
+  fill('rvParecer',PAR.map((t,i)=>({v:i,t})));
+  const FILTROS=['rvSit','rvAno','rvTema','rvProduto','rvParecer','rvRev'];
+
+  /* skip: nome de um filtro a ignorar — os graficos por ano mostram todos os anos do recorte para dar contexto */
+  function current(skip){
+    const sit=$('rvSit').value, ano=$('rvAno').value, t=$('rvTema').value, p=$('rvProduto').value,
+          pa=$('rvParecer').value, rv=$('rvRev').value, q=$('rvBusca').value.trim().toLowerCase();
+    return A.filter(o=>{
+      if(sit!==''&&String(o.ab)!==sit) return false;
+      if(skip!=='ano'&&ano!==''&&String(o.ano)!==ano) return false;
+      if(t&&o.tema!==t) return false;
+      if(p&&o.prod!==p) return false;
+      if(pa!==''&&String(o.pc)!==pa) return false;
+      if(rv==='com'&&!TEM_REV(o)) return false;
+      if(rv==='sem'&&TEM_REV(o)) return false;
+      if(q&&!(o.key.toLowerCase().includes(q)||o.forn.toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }
+
+  const grupos=(rows,f)=>{const m=new Map();rows.forEach(o=>{const k=f(o);let e=m.get(k);if(!e){e={name:k,n:0,ini:0,rev:0,efe:0};m.set(k,e);}e.n++;e.ini+=o.ini;e.rev+=o.rev;e.efe+=o.efe;});return [...m.values()];};
+  const tipG=e=>`<span>${nfInt.format(e.n)} chamados · inicial ${fmtBRL(e.ini)}</span><span>revertido ${fmtBRL(e.rev)} (${pc1(e.rev,e.ini)})</span><span>efetivo ${fmtBRL(e.efe)}</span>`;
+  const pickSel=id=>({onClick:r=>{const s=$(id);s.value=(s.value===r.name)?'':r.name;shown=100;render();},active:n=>$(id).value===n});
+
+  function kpis(rows){
+    const n=rows.length, ini=S(rows,r=>r.ini), rev=S(rows,r=>r.rev), efe=ini-rev, nRev=rows.filter(TEM_REV).length,
+          semP=rows.filter(r=>r.pc===0).length, dif=S(rows,r=>r.ofi)-efe;
+    $('rv-kpis').innerHTML=`
+      <div class="tile hero"><div class="k">Prejuízo inicial</div><div class="v">${nfBRL.format(ini)}</div>
+        <div class="n">${nfInt.format(n)} chamados · antes de qualquer reversão</div></div>
+      <div class="tile hero" style="--tc:var(--good)"><div class="k">Revertido</div><div class="v">${nfBRL.format(rev)}</div>
+        <div class="n">${pc1(rev,ini)} do inicial · ${nfInt.format(nRev)} chamados com reversão</div></div>
+      <div class="tile hero" style="--tc:var(--series-2)"><div class="k">Prejuízo efetivo</div><div class="v">${nfBRL.format(efe)}</div>
+        <div class="n">${pc1(efe,ini)} do inicial · entra de fato como prejuízo</div></div>
+      <div class="tile"><div class="k">Chamados com reversão</div><div class="v">${pc1(nRev,n)}</div>
+        <div class="n">${nfInt.format(nRev)} de ${nfInt.format(n)} chamados</div></div>
+      <div class="tile alert"><div class="k">Sem parecer da área</div><div class="v">${nfInt.format(semP)}</div>
+        <div class="n">${pc1(semP,n)} dos chamados · reversão sem registro de resultado</div></div>
+      <div class="tile"><div class="k">Diferença p/ valor oficial</div><div class="v">${nfBRL.format(dif)}</div>
+        <div class="n">${dif>1?'que as outras abas somam a mais (crédito recebido não refletido)':'sem diferença no recorte'}</div></div>`;
+  }
+
+  function bridge(rows){
+    const ini=S(rows,r=>r.ini), rev=S(rows,r=>r.rev), efe=ini-rev, pr=pct(rev,ini), pe=100-pr;
+    const seg=(cls,pctv,tit,val)=>`<div class="seg ${cls}" style="flex:${Math.max(pctv,.0001)} 1 0">${pctv>=14?`<b>${tit}</b><span>${val} · ${nf1.format(pctv)}%</span>`:''}</div>`;
+    $('rv-bridge').innerHTML=`<div class="rvbridge">${seg('rev',pr,'Revertido',fmtBRLCompact(rev))}${seg('efe',pe,'Efetivo',fmtBRLCompact(efe))}</div>
+      <div class="rvlegend"><span><i style="background:var(--good)"></i>Revertido <b>${fmtBRL(rev)}</b> (${pc1(rev,ini)})</span>
+      <span><i style="background:var(--series-2)"></i>Efetivo <b>${fmtBRL(efe)}</b> (${pc1(efe,ini)})</span>
+      <span>Inicial <b>${fmtBRL(ini)}</b></span></div>`;
+  }
+
+  function charts(rows){
+    const porAno=grupos(current('ano'),o=>o.ano).sort((a,b)=>a.name-b.name);
+    barsInto('rv-ch-ano',porAno.map(e=>String(e.name)),
+      [{label:'Revertido',color:'var(--good)',values:porAno.map(e=>e.rev)},{label:'Efetivo',color:'var(--series-2)',values:porAno.map(e=>e.efe)}],
+      {h:270,mB:34,labelMode:'global',fmtY:fmtBRLCompact,fmtV:fmtBRL});
+    legendInto('rv-lg-ano',[{label:'Revertido',color:'var(--good)'},{label:'Efetivo (prejuízo de fato)',color:'var(--series-2)'}]);
+
+    hbarsInto('rv-ch-taxa',porAno.map(e=>({name:String(e.name),value:pct(e.rev,e.ini),
+      tip:tipG(e)})),{fmt:r=>nf1.format(r.value)+'%',...pickSel('rvAno')});
+
+    const par=grupos(rows,o=>o.pc).map(e=>({...e,idx:e.name,name:PAR[e.name],color:PAR_COR[e.name]})).sort((a,b)=>b.n-a.n);
+    hbarsInto('rv-ch-parecer',par.map(e=>({name:e.name,idx:e.idx,value:e.n,color:e.color,tip:tipG(e)})),
+      {onClick:r=>{const s=$('rvParecer');s.value=(s.value===String(r.idx))?'':String(r.idx);shown=100;render();},
+       active:n=>$('rvParecer').value===String(PAR.indexOf(n))});
+
+    const tm=grupos(rows,o=>o.tema).sort((a,b)=>b.efe-a.efe).slice(0,10);
+    hbarsInto('rv-ch-tema',tm.map(e=>({name:e.name,value:e.efe,tip:tipG(e)})),
+      {fmt:r=>{const e=tm.find(x=>x.name===r.name);return fmtBRLCompact(r.value)+' · rev. '+pc1(e.rev,e.ini);},...pickSel('rvTema')});
+
+    const pr=grupos(rows,o=>o.prod).sort((a,b)=>b.efe-a.efe);
+    hbarsInto('rv-ch-prod',pr.map(e=>({name:e.name,value:e.efe,tip:tipG(e)})),
+      {fmt:r=>fmtBRLCompact(r.value),...pickSel('rvProduto')});
+
+    const fo=grupos(rows,o=>o.forn).filter(e=>e.name!=='Não informado').sort((a,b)=>b.efe-a.efe).slice(0,10);
+    hbarsInto('rv-ch-forn',fo.map(e=>({name:e.name,value:e.efe,tip:tipG(e)})),
+      {fmt:r=>fmtBRLCompact(r.value),
+       onClick:r=>{const s=$('rvBusca');s.value=(s.value===r.name)?'':r.name;shown=100;render();},
+       active:n=>$('rvBusca').value===n});
+
+    const TG=[['0',o=>o.tent===0],['1',o=>o.tent===1],['2',o=>o.tent===2],['3',o=>o.tent===3],['4',o=>o.tent===4],
+              ['5 a 9',o=>o.tent>=5&&o.tent<=9],['10',o=>o.tent===10],['Não informado',o=>o.tent<0]];
+    const tt=TG.map(([n,f])=>{const g=rows.filter(f);return {name:n,n:g.length,com:g.filter(TEM_REV).length,ini:S(g,r=>r.ini),rev:S(g,r=>r.rev),efe:S(g,r=>r.efe)};}).filter(e=>e.n>0);
+    hbarsInto('rv-ch-tent',tt.map(e=>({name:e.name+(e.name==='Não informado'||e.name==='10'?'':' tent.'),value:pct(e.com,e.n),noClick:true,e,
+      tip:tipG(e)+`<span>${nfInt.format(e.com)} de ${nfInt.format(e.n)} com reversão</span>`})),
+      {max:100,fmt:r=>nf1.format(r.value)+'% · '+nfInt.format(r.e.n)+' ch.'});
+  }
+
+  function qualidade(rows){
+    const c=bit=>rows.filter(r=>r.q&bit), copia=c(8), semCampoEnc=c(1).filter(r=>!r.ab), creditoSemCampo=c(2), sujo=c(4);
+    const P=RV.kpis.preenchidos, N=RV.kpis.total;
+    const difC=S(creditoSemCampo,r=>r.ofi-r.efe);
+    $('rv-qual').innerHTML=`<div class="rvq">
+      <div class="it wa"><b>${nfInt.format(copia.length)}</b>chamados com “Prejuízo após Reversão” <u>idêntico</u> ao inicial. Parece cópia do inicial, não uma reversão apurada: o campo não distingue “não reverteu” de “ainda não analisado”.</div>
+      <div class="it al"><b>${nfInt.format(creditoSemCampo.length)}</b>chamados encerrados com crédito recebido e “Prejuízo após Reversão” vazio. Nas outras abas o valor deles é o inicial, então elas somam <b style="display:inline;font-size:inherit">${fmtBRL(difC)}</b> a mais do que o efetivo.</div>
+      <div class="it wa"><b>${nfInt.format(semCampoEnc.length)}</b>chamados encerrados sem “Prejuízo após Reversão” preenchido.</div>
+      <div class="it al"><b>${nfInt.format(P.reversaoSN)} e ${nfInt.format(P.categoriaPrej)}</b>chamados com os campos “Reversão?” e “Categoria de Problema - Prejuízo” preenchidos (de ${nfInt.format(N)} no universo). Os campos existem no formulário, mas ninguém os usa.</div>
+      ${sujo.length?`<div class="it"><b>${nfInt.format(sujo.length)}</b>chamados com valor maior que o inicial (tratados como sem reversão para a conta fechar).</div>`:''}
+    </div>`;
+  }
+
+  /* ---------------- status report: ciclo completo, nao muda com os filtros ---------------- */
+  function statusReport(){
+    const ab=A.filter(o=>o.ab), en=A.filter(o=>!o.ab);
+    const ini=S(A,r=>r.ini), rev=S(A,r=>r.rev), efe=ini-rev;
+    const taxa=rs=>pc1(S(rs,r=>r.rev),S(rs,r=>r.ini));
+    const ate20=A.filter(o=>o.ano<=2020), de21=A.filter(o=>o.ano>=2021), r2526=A.filter(o=>o.ano>=2025);
+    const en21=en.filter(o=>o.ano>=2021), enPar=en.filter(o=>o.pc>0);
+    const nao=enPar.filter(o=>o.pc===1), conc=enPar.filter(o=>o.pc===2), semPre=enPar.filter(o=>o.pc===3), outro=enPar.filter(o=>o.pc===4);
+    const top20=[...A].sort((a,b)=>b.rev-a.rev).slice(0,20);
+    const fraude=A.filter(o=>/fraude/i.test(o.tema)), hosp=de21.filter(o=>o.prod==='Hospedagem');
+    const tx=f=>{const g=A.filter(f);return g.length?pc1(g.filter(TEM_REV).length,g.length):'—';};
+    const t10=A.filter(o=>o.tent===10);
+    const t21=grupos(de21,o=>o.tema).sort((a,b)=>b.efe-a.efe).slice(0,3);
+    const bit=b=>A.filter(o=>o.q&b);
+    const credSem=bit(2), copia=bit(8), P=RV.kpis.preenchidos;
+    const dif=S(credSem,o=>o.ofi-o.efe);
+    const m=fmtBRLCompact, n=v=>nfInt.format(v);
+    const h=`
+<div class="meta">Dados extraídos em ${esc(RV.geradoEm)} · ${n(A.length)} chamados (${n(ab.length)} em aberto e ${n(en.length)} encerrados) do departamento TI/Fraude, ciclo completo.</div>
+<h3>1. Situação</h3><ul>
+<li>Do prejuízo inicial de <b>${m(ini)}</b>, foram revertidos <b>${m(rev)}</b> (${pc1(rev,ini)}); entram como prejuízo efetivo <b>${m(efe)}</b>.</li>
+<li>A reversão ficou no passado: chamados abertos até 2020 reverteram <b>${taxa(ate20)}</b> do inicial; de 2021 em diante, <b>${taxa(de21)}</b>; em 2025–2026, <b>${taxa(r2526)}</b> (${m(S(r2526,o=>o.rev))} de ${m(S(r2526,o=>o.ini))}).</li>
+<li>O backlog em aberto soma <b>${m(S(ab,o=>o.ini))}</b> em ${n(ab.length)} chamados e tem ${m(S(ab,o=>o.rev))} revertidos (${taxa(ab)}); <b>${pc1(ab.filter(o=>o.pc===0).length,ab.length)}</b> deles não têm nenhum parecer da área sobre a reversão.</li></ul>
+<h3>2. Principais causas (o que os dados mostram)</h3><ol>
+<li><b>A reversão não é obtida, ou não é registrada, desde 2021.</b> Entre os encerrados de 2021 em diante, ${pc1(en21.filter(o=>o.pc===0).length,en21.length)} (${n(en21.filter(o=>o.pc===0).length)} de ${n(en21.length)}) não têm parecer de reversão. Com o registro atual não é possível separar “não houve reversão” de “não foi registrada”.</li>
+<li><b>O que foi revertido vem de poucos casos.</b> Os 20 maiores créditos respondem por ${pc1(S(top20,o=>o.rev),rev)} de tudo o que foi revertido; o tema Fraude (${n(fraude.length)} chamados) responde por ${pc1(S(fraude,o=>o.rev),rev)} (${m(S(fraude,o=>o.rev))}). Hospedagem, que é ${pc1(hosp.length,de21.length)} dos chamados de 2021 em diante, reverteu só ${taxa(hosp)} do inicial.</li>
+<li><b>Quando a área responde, a resposta dominante é “não obtida”.</b> Dos ${n(enPar.length)} encerrados com parecer: ${pc1(nao.length,enPar.length)} reversão não obtida, ${pc1(conc.length,enPar.length)} reversão concedida (parcial ou máxima, ${m(S(conc,o=>o.rev))} revertidos), ${pc1(semPre.length,enPar.length)} sem prejuízo real ou só reembolso e ${pc1(outro.length,enPar.length)} outros textos.</li>
+<li><b>Mais tentativas não elevam a taxa.</b> Chamados com alguma reversão, por número de tentativas registradas: 1 tentativa ${tx(o=>o.tent===1)}, 2 tentativas ${tx(o=>o.tent===2)}, 3 tentativas ${tx(o=>o.tent===3)}. A exceção são os ${n(t10.length)} chamados com 10 tentativas (${tx(o=>o.tent===10)} com reversão, ${m(S(t10,o=>o.rev))} revertidos): casos de alto valor e lotes de agências, não a regra.</li>
+<li><b>O prejuízo recente está em causas que a reversão não alcança.</b> De 2021 em diante, os maiores prejuízos efetivos estão em ${t21.map(e=>`${esc(e.name)} (${m(e.efe)}, ${pc1(e.rev,e.ini)} revertido)`).join(', ')}.</li>
+<li><b>O registro da reversão não é confiável para decidir.</b> “Prejuízo após Reversão” é idêntico ao inicial em ${n(copia.length)} chamados (parece cópia); ${n(credSem.length)} encerrados têm crédito recebido e esse campo vazio, e por isso as outras abas somam ${m(dif)} a mais; os campos “Reversão?” e “Categoria de Problema - Prejuízo” foram preenchidos em ${n(P.reversaoSN)} e ${n(P.categoriaPrej)} chamados.</li></ol>
+<h3>3. Melhorias sugeridas</h3><ol>
+<li><b>Registrar o resultado da reversão em todo chamado.</b> Tornar obrigatório, ao sair de “análise área responsável”, preencher Reversão? (sim, parcial ou não), Tentativas, Crédito recebido e o parecer. Hoje ${pc1(A.filter(o=>o.pc===0).length,A.length)} dos chamados não têm parecer.</li>
+<li><b>Padronizar o motivo da não reversão</b> numa lista (hotel, broker ou companhia não autorizou; prazo vencido; falha nossa de integração; sem prejuízo real, só reembolso). Assim “não foi possível” vira causa acionável e dá para negociar por fornecedor.</li>
+<li><b>Calcular “Prejuízo após Reversão” automaticamente</b> (inicial − crédito recebido), com automação no Jira. Elimina a cópia do inicial e a diferença de ${m(dif)} entre as abas.</li>
+<li><b>Retomar a reversão do backlog por valor.</b> Priorizar na Fila de atuação os maiores prejuízos em aberto e medir o prazo entre a abertura e a primeira tentativa. A queda a partir de 2021 pode vir de janela de contestação perdida com fornecedores; validar com a área antes de agir.<span class="hip">hipótese</span></li>
+<li><b>Trilha dedicada para fraude</b>, o tema que concentra a maior recuperação por chamado.</li>
+<li><b>Atuar na origem.</b> A reversão repõe pouco; o ganho está em evitar o prejuízo nos temas de maior valor recente (integração, reserva órfã, SIG), em linha com a visão de Ciclo de correção.</li>
+<li><b>Acompanhar dois indicadores por mês:</b> taxa de reversão (revertido ÷ inicial, por mês de encerramento) e % de chamados com parecer registrado. Meta a definir com a coordenação.</li></ol>`;
+    return h;
+  }
+  function renderSR(){ $('rv-sr').innerHTML=statusReport(); }
+  function srTexto(){
+    const txt=statusReport()
+      .replace(/<li>/g,'• ').replace(/<\/li>/g,'\n').replace(/<h3>/g,'\n').replace(/<\/h3>/g,'\n')
+      .replace(/<\/div>/g,'\n').replace(/<[^>]+>/g,'')
+      .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
+    return 'STATUS REPORT — REVERSÃO DE PREJUÍZO (SDPREJ)\n'+txt.replace(/\n{3,}/g,'\n\n').trim();
+  }
+
+  /* ---------------- tabela ---------------- */
+  const CMP={k:(a,b)=>a.k-b.k,tema:(a,b)=>a.tema.localeCompare(b.tema,'pt-BR'),forn:(a,b)=>a.forn.localeCompare(b.forn,'pt-BR'),
+    ano:(a,b)=>a.ano-b.ano,parecer:(a,b)=>a.pc-b.pc,tent:(a,b)=>a.tent-b.tent,ini:(a,b)=>a.ini-b.ini,rev:(a,b)=>a.rev-b.rev,efe:(a,b)=>a.efe-b.efe};
+  const ordenar=rows=>[...rows].sort((a,b)=>CMP[sortKey](a,b)*sortDir||b.efe-a.efe);
+  function tabela(rows){
+    const sl=ordenar(rows).slice(0,shown);
+    document.querySelector('#rv-dt tbody').innerHTML=sl.length?sl.map(r=>`<tr>
+      <td style="white-space:nowrap"><a href="${JIRA}${esc(r.key)}" target="_blank" rel="noopener">${esc(r.key)}</a></td>
+      <td class="sum" style="max-width:220px" title="${esc(r.tema)}">${esc(r.tema)}</td>
+      <td class="sum" style="max-width:200px" title="${esc(r.forn)}">${esc(r.forn)}</td>
+      <td class="num">${r.ano}</td>
+      <td><span class="pill" style="border-color:${PAR_COR[r.pc]}">${esc(PAR[r.pc])}</span></td>
+      <td class="num">${r.tent<0?'—':r.tent}</td>
+      <td class="num">${nfBRL2.format(r.ini)}</td>
+      <td class="num" style="${r.rev>0?'color:var(--good);font-weight:620':''}">${nfBRL2.format(r.rev)}</td>
+      <td class="num" style="font-weight:620">${nfBRL2.format(r.efe)}</td></tr>`).join('')
+      :'<tr><td colspan="9" class="empty">Nenhum chamado com os filtros atuais.</td></tr>';
+    $('rv-count').textContent=`Exibindo ${nfInt.format(sl.length)} de ${nfInt.format(rows.length)} chamados · efetivo do recorte ${fmtBRL(S(rows,r=>r.efe))}`;
+    $('rv-more').style.display=sl.length<rows.length?'':'none';
+    document.querySelectorAll('#rv-dt th').forEach(th=>{
+      const a=th.querySelector('.ar'); if(!a) return;
+      a.textContent=th.dataset.s===sortKey?(sortDir>0?'▲':'▼'):'↕'; a.style.opacity=th.dataset.s===sortKey?1:.45;});
+  }
+
+  function render(){
+    const rows=current();
+    kpis(rows); bridge(rows); charts(rows); qualidade(rows); tabela(rows);
+  }
+
+  function aviso(msg,erro){
+    const el=$('rv-sr-aviso'); el.textContent=msg; el.classList.toggle('err',!!erro);
+    clearTimeout(avisoT); avisoT=setTimeout(()=>{el.textContent='';},3500);
+  }
+  function copiar(txt){
+    if(navigator.clipboard&&window.isSecureContext) return navigator.clipboard.writeText(txt);
+    return new Promise((ok,err)=>{
+      const t=document.createElement('textarea'); t.value=txt; t.style.cssText='position:fixed;opacity:0';
+      document.body.appendChild(t); t.select();
+      try{ document.execCommand('copy')?ok():err(); }catch(e){ err(e); } finally{ t.remove(); }
+    });
+  }
+
+  FILTROS.forEach(id=>$(id).addEventListener('change',()=>{shown=100;render();}));
+  let deb; $('rvBusca').addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(()=>{shown=100;render();},180);});
+  $('rv-clear').addEventListener('click',()=>{FILTROS.forEach(id=>$(id).value='');$('rvBusca').value='';sortKey='efe';sortDir=-1;shown=100;render();});
+  document.querySelectorAll('#rv-dt th').forEach(th=>th.addEventListener('click',()=>{
+    const k=th.dataset.s; if(!k) return;
+    if(k===sortKey) sortDir*=-1; else { sortKey=k; sortDir=(k==='k'||k==='tema'||k==='forn'||k==='parecer')?1:-1; }
+    render();}));
+  $('rv-more').addEventListener('click',()=>{shown+=100;render();});
+  $('rv-sr-copy').addEventListener('click',()=>copiar(srTexto()).then(()=>aviso('Status report copiado'),()=>aviso('Não foi possível copiar neste navegador.',true)));
+  $('rv-csv').addEventListener('click',()=>{
+    const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"', dec=v=>String(v).replace('.',',');
+    const csv='﻿'+['Chave;Tema;Produto;Fornecedor;Ano;Parecer;Tentativas;Inicial R$;Revertido R$;Efetivo R$;Situacao',
+      ...ordenar(current()).map(r=>[r.key,r.tema,r.prod,r.forn,r.ano,PAR[r.pc],r.tent<0?'':r.tent,dec(r.ini),dec(r.rev),dec(r.efe),r.ab?'Em aberto':'Encerrado'].map(q).join(';'))].join('\r\n');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    a.download='sdprej-reversao-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();});
+
+  renderSR();
+  return {render};
+})();
+
 /* ===================== view switching ===================== */
 let currentView='temas';
 const VIEWS={temas:{sec:'view-temas',tab:'tab-temas',ger:()=>DT.geradoEm,r:()=>ViewTemas.render()},
@@ -1481,7 +1714,8 @@ const VIEWS={temas:{sec:'view-temas',tab:'tab-temas',ger:()=>DT.geradoEm,r:()=>V
              ana  :{sec:'view-ana',  tab:'tab-ana',  ger:()=>DA.geradoEm,r:()=>ViewAna.render()},
              rel  :{sec:'view-rel',  tab:'tab-rel',  ger:()=>GD.geradoEm,r:()=>ViewRel.render()},
              he   :{sec:'view-he',   tab:'tab-he',   ger:()=>HE.geradoEm,r:()=>ViewHE.render()},
-             fila :{sec:'view-fila', tab:'tab-fila', ger:()=>DT.geradoEm,r:()=>ViewFila.render()}};
+             fila :{sec:'view-fila', tab:'tab-fila', ger:()=>DT.geradoEm,r:()=>ViewFila.render()},
+             rv   :{sec:'view-rv',   tab:'tab-rv',   ger:()=>RV.geradoEm,r:()=>ViewRV.render()}};
 function show(v){
   currentView=v;
   for(const k in VIEWS){

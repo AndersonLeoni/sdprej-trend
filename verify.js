@@ -377,6 +377,45 @@ function verificaAnalistas(DA) {
      DA.ciclos.length + ' ciclos em ' + new Set(DA.ciclos.map(c => c.key)).size + ' chamados');
 }
 
+/* ------------------------------------------------------------ reversao ------ */
+
+function verificaReversao(RV, HE) {
+  console.log('\nReversao do prejuizo (' + RV.geradoEm + ')');
+  const R = RV.rows, D = RV.dic;
+  R.length === RV.kpis.total ? ok(R.length + ' chamados = kpis.total') : falha(`linhas ${R.length}, kpis.total ${RV.kpis.total}`);
+  const ab = R.filter(r => r[1]).length;
+  ab === RV.kpis.abertos ? ok(ab + ' em aberto + ' + (R.length - ab) + ' encerrados') : falha(`abertos ${ab}, esperado ${RV.kpis.abertos}`);
+
+  let ruim = 0, fora = 0;
+  for (const r of R) {
+    const [, , t, p, a, f, ano, ini, rev, ofi, , pc] = r;
+    /* inicial negativo existe (ganho lancado no chamado): ai nao ha o que reverter, revertido = 0 */
+    if (![ini, rev, ofi].every(Number.isFinite) || rev < -0.005 || rev > Math.max(ini, 0) + 0.005) ruim++;
+    if (t >= D.temas.length || p >= D.prods.length || a >= D.areas.length || f >= D.forns.length || pc < 0 || pc >= D.pareceres.length || !(ano >= 2000)) fora++;
+  }
+  ruim ? falha(ruim + ' chamado(s) com revertido fora de [0, inicial] ou valor nao numerico (a conta inicial = revertido + efetivo nao fecha)')
+       : ok('em todo chamado: 0 <= revertido <= inicial (inicial = revertido + efetivo)');
+  fora ? falha(fora + ' linha(s) com indice fora dos dicionarios') : ok('indices dos dicionarios validos');
+  const neg = R.filter(r => r[7] < 0).length;
+  if (neg) aviso(neg + ' chamado(s) com prejuizo inicial NEGATIVO (ganho lancado); revertido = 0 neles');
+
+  const soma = i => Math.round(R.reduce((s, r) => s + r[i], 0) * 100) / 100;
+  for (const [nome, i, esp] of [['inicial', 7, RV.kpis.inicial], ['revertido', 8, RV.kpis.revertido], ['oficial', 9, RV.kpis.oficial]]) {
+    Math.abs(soma(i) - esp) < 0.05 ? ok(`soma de ${nome} = ${esp.toLocaleString('pt-BR')}`) : falha(`soma de ${nome}: ${soma(i)}, esperado ${esp}`);
+  }
+
+  /* o universo encerrado e o mesmo do historico: o valor oficial deles tem de bater com o total do historico */
+  const enc = R.filter(r => !r[1]);
+  const oficEnc = Math.round(enc.reduce((s, r) => s + r[9], 0) * 100) / 100;
+  if (enc.length === HE.kpis.total && Math.abs(oficEnc - HE.kpis.valorTotal) < 0.05) ok(`encerrados batem com o historico: ${enc.length} chamados, R$ ${oficEnc.toLocaleString('pt-BR')}`);
+  else aviso(`encerrados aqui: ${enc.length} chamados / R$ ${oficEnc}; historico: ${HE.kpis.total} / R$ ${HE.kpis.valorTotal} (extracoes de horarios diferentes?)`);
+
+  const prec = RV.kpis.preenchidos;
+  ok(`parecer da area em ${prec.parecer} de ${R.length} chamados; "Reversao?" em ${prec.reversaoSN}; "Categoria de problema" em ${prec.categoriaPrej}`);
+  const dif = Math.round((RV.kpis.oficial - (RV.kpis.inicial - RV.kpis.revertido)) * 100) / 100;
+  aviso(`o valor oficial das outras abas supera o efetivo em R$ ${dif.toLocaleString('pt-BR')} (credito recebido nao refletido em "Prejuizo apos Reversao")`);
+}
+
 /* -------------------------------------------------------------- main ------ */
 
 function main() {
@@ -392,6 +431,7 @@ function main() {
   verificaGdis(ler(arqs.gdis));
   verificaAnalistas(ler(arqs.analistas));
   verificaEncerrados(ler(arqs.encerrados));
+  if (fs.existsSync(path.join(RAIZ, 'data', 'reversao.json'))) verificaReversao(ler('reversao.json'), ler(arqs.encerrados));
   /* a tela de SLA e separada e so local: so confere se o payload existir */
   if (fs.existsSync(path.join(RAIZ, 'data', 'sla.json'))) verificaSla(ler('sla.json'));
 

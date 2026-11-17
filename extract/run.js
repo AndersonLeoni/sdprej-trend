@@ -28,6 +28,7 @@ const VISOES = {
   analistas:  { arq: 'analistas.json',  mod: './analistas',  rotulo: 'visao por analista' },
   gdis:       { arq: 'gdis.json',       mod: './gdis',       rotulo: 'vinculo com GDIS' },
   encerrados: { arq: 'encerrados.json', mod: './encerrados', rotulo: 'historico encerrado' },
+  reversao:   { arq: 'reversao.json',   mod: './reversao',   rotulo: 'reversao do prejuizo' },
   // problemas: desativado — será implementado pós-férias com lógica de app.js
 };
 

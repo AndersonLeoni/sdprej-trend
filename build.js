@@ -32,6 +32,7 @@ const DADOS = [
   { nome: 'DA', arq: 'data/analistas.json' },
   { nome: 'GD', arq: 'data/gdis.json' },
   { nome: 'HE', arq: 'data/encerrados.json' },
+  { nome: 'RV', arq: 'data/reversao.json' },
   // PR será adicionado quando app.js suportar Visão 4 (pós-férias)
 ];
 
@@ -138,6 +139,6 @@ function notaDeriva(carimbos) {
          'essa deriva: as três saem da mesma passada.<br>\n';
 }
 
-const NOME_VISAO = { DT: 'visão por tema', DA: 'visão por analista', GD: 'vínculo com GDIS', HE: 'histórico encerrado' };
+const NOME_VISAO = { DT: 'visão por tema', DA: 'visão por analista', GD: 'vínculo com GDIS', HE: 'histórico encerrado', RV: 'reversão' };
 
 main();
